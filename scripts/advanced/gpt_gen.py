@@ -13,7 +13,14 @@ from colorama import Fore, Style
 # 1. Configuration & Setup
 # ======================================
 
-openai.api_key = ""
+MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-2024-08-06")
+BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+if not API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is required")
+
+client = openai.OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
 OBJECT_LIST_JSON = "metasim/cfg/tasks/gpt/config/rigid_objects_init_list.json"
 ROBOT_LIST_JSON = "metasim/cfg/tasks/gpt/config/robots_init_list.json"
@@ -90,7 +97,7 @@ def call_gpt_to_generate_task(user_prompt, object_list, robot_list):
       }
     """
     system_instructions = (
-        "You are a helpful assistant that invents an interesting tabletop-manipulation task.\n"
+        "You are a helpful assistant that creates tabletop-manipulation tasks based on user requests.\n"
         "We have the following objects:\n"
         f"{object_list}\n\n"
         "We have the following robots:\n"
@@ -122,13 +129,13 @@ def call_gpt_to_generate_task(user_prompt, object_list, robot_list):
         {"role": "user", "content": user_prompt},
     ]
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
         messages=messages,
         temperature=0.7,
         max_tokens=15000,
     )
-    content = response.choices[0].message["content"].strip()
+    content = response.choices[0].message.content.strip()
 
     # Remove triple backticks if GPT includes them
     if content.startswith("```"):
@@ -220,13 +227,13 @@ def call_gpt_to_get_init_state(partial_task_json, all_objects_data, all_robots_d
         {"role": "system", "content": system_instructions},
     ]
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
         messages=messages,
         temperature=0.7,
         max_tokens=15000,
     )
-    content = response.choices[0].message["content"].strip()
+    content = response.choices[0].message.content.strip()
 
     if content.startswith("```"):
         if content.endswith("```"):
@@ -355,6 +362,7 @@ def main():
     # Step E: Write final JSON
     snake_task_name = to_snake_case(partial_task["task_name"])
     final_json_path = os.path.join(TASKS_OUTPUT_FOLDER, f"{snake_task_name}.json")
+    os.makedirs(TASKS_OUTPUT_FOLDER, exist_ok=True)
     with open(final_json_path, "w", encoding="utf-8") as f:
         json.dump(partial_task, f, indent=2, ensure_ascii=False)
 
