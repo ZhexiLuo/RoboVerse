@@ -247,7 +247,10 @@ def write_task_file(final_json, object_library):
             print(f"Warning: object '{name}' not found in library; skipping.")
             continue
         filepath = object_library[name]["filepath"]
-        entry = f'        RigidObjCfg(name="{name}", physics=PhysicStateType.RIGIDBODY, usd_path="{filepath}")'
+        if filepath.endswith(".xml"):
+            entry = f'        RigidObjCfg(name="{name}", physics=PhysicStateType.RIGIDBODY, mjcf_path="{filepath}")'
+        else:
+            entry = f'        RigidObjCfg(name="{name}", physics=PhysicStateType.RIGIDBODY, usd_path="{filepath}")'
         object_list_entries.append(entry)
 
     objects_str = ",\n".join(object_list_entries) if object_list_entries else ""
