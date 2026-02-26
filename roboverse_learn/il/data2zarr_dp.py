@@ -8,6 +8,7 @@ import imageio.v2 as iio
 import numpy as np
 import torch
 import zarr
+from zarr.codecs import BloscCodec
 from tqdm import tqdm
 
 try:
@@ -118,7 +119,7 @@ def main():
     zarr_meta = zarr_root.create_group("meta")
 
     # ZARR datasets will be created dynamically during the first batch write
-    compressor = zarr.Blosc(cname="zstd", clevel=3, shuffle=1)
+    compressor = BloscCodec(cname="zstd", clevel=3, shuffle="shuffle")
 
     # Batch processing settings
     batch_size = 100
