@@ -100,6 +100,7 @@ class ScoreMatchingUnetImagePolicy(BaseImagePolicy):
         )
 
         scheduler.set_timesteps(self.num_inference_steps)
+        scheduler.timesteps = scheduler.timesteps.to(device=trajectory.device)
 
         for t in scheduler.timesteps:
             log.info(f"Using algorithm: Score Matching")

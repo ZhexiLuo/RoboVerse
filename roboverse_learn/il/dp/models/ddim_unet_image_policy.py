@@ -133,6 +133,7 @@ class DiffusionUnetImagePolicy(BaseImagePolicy):
 
         # set step values
         scheduler.set_timesteps(self.num_inference_steps)
+        scheduler.timesteps = scheduler.timesteps.to(device=condition_data.device)
         scheduler.eta = self.eta  # set eta for DDIM
 
         for t in scheduler.timesteps:
