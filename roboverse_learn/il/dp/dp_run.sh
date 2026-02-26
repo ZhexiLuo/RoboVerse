@@ -15,7 +15,7 @@ act_space=joint_pos
 delta_ee=0
 eval_num_envs=1
 eval_max_step=300
-expert_data_num=100
+expert_data_num=99
 sim_set=isaacsim
 eval_ckpt_name=100
 

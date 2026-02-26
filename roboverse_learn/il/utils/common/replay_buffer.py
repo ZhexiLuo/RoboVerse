@@ -157,12 +157,12 @@ class ReplayBuffer:
         """
         Load to memory.
         """
-        src_root = zarr.group(src_store)
+        src_root = zarr.open_group(src_store, mode="r")
         root = None
         if store is None:
             # numpy backend
             meta = dict()
-            for key, value in src_root["meta"].items():
+            for key, value in src_root["meta"].members():
                 if len(value.shape) == 0:
                     meta[key] = np.array(value)
                 else:
