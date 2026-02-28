@@ -89,16 +89,82 @@ tasks:
   # - rlbench.stack_wine
   # - rlbench.sweep_to_dustpan
   libero:
-  # - libero.pick_alphabet_soup
+  - libero.pick_alphabet_soup
   - libero.pick_bbq_sauce
   - libero.pick_butter
-  # - libero.pick_chocolate_pudding
-  # - libero.pick_cream_cheese
-  # - libero.pick_ketchup
-  # - libero.pick_milk
-  # - libero.pick_orange_juice
-  # - libero.pick_salad_dressing
-  # - libero.pick_tomato_sauce
+  - libero.pick_chocolate_pudding
+  - libero.pick_cream_cheese
+  - libero.pick_ketchup
+  - libero.pick_milk
+  - libero.orange_juice
+  - libero.pick_salad_dressing
+  - libero.pick_tomato_sauce
+  libero_90:
+  - libero_90.kitchen_scene1_open_bottom_drawer
+  - libero_90.kitchen_scene1_open_top_drawer
+  - libero_90.kitchen_scene1_open_drawer_put_bowl
+  - libero_90.kitchen_scene1_put_the_black_bowl_on_the_plate
+  - libero_90.kitchen_scene1_put_the_black_bowl_on_top_of_the_cabinet
+  - libero_90.kitchen_scene2_open_the_top_drawer_of_the_cabinet
+  - libero_90.kitchen_scene2_put_the_black_bowl_at_the_back_on_the_plate
+  - libero_90.kitchen_scene2_put_the_black_bowl_at_the_front_on_the_plate
+  - libero_90.kitchen_scene2_put_the_black_bowl_in_the_middle_on_the_plate
+  - libero_90.kitchen_scene2_put_the_middle_black_bowl_on_top_of_the_cabinet
+  - libero_90.kitchen_scene2_stack_the_black_bowl_at_the_front_on_the_black_bowl_in_the_middle
+  - libero_90.kitchen_scene2_stack_the_middle_black_bowl_on_the_back_black_bowl
+  - libero_90.kitchen_scene3_put_the_frying_pan_on_the_stove
+  - libero_90.kitchen_scene3_put_the_moka_pot_on_the_stove
+  - libero_90.kitchen_scene3_turn_on_the_stove
+  - libero_90.kitchen_scene3_turn_on_the_stove_and_put_the_frying_pan_on_it
+  - libero_90.kitchen_scene4_close_the_bottom_drawer_of_the_cabinet
+  - libero_90.kitchen_scene4_close_the_bottom_drawer_of_the_cabinet_and_open_the_top_drawer
+  - libero_90.kitchen_scene4_put_the_black_bowl_in_the_bottom_drawer_of_the_cabinet
+  - libero_90.kitchen_scene4_put_the_black_bowl_on_top_of_the_cabinet
+  - libero_90.kitchen_scene4_put_the_wine_bottle_in_the_bottom_drawer_of_the_cabinet
+  - libero_90.kitchen_scene4_put_the_wine_bottle_on_the_wine_rack
+  - libero_90.kitchen_scene5_close_the_top_drawer_of_the_cabinet
+  - libero_90.kitchen_scene5_put_the_black_bowl_in_the_top_drawer_of_the_cabinet
+  - libero_90.kitchen_scene5_put_the_black_bowl_on_the_plate
+  - libero_90.kitchen_scene5_put_the_black_bowl_on_top_of_the_cabinet
+  - libero_90.kitchen_scene5_put_the_ketchup_in_the_top_drawer_of_the_cabinet
+  - libero_90.kitchen_scene6_close_the_microwave
+  - libero_90.kitchen_scene6_put_the_yellow_and_white_mug_to_the_front_of_the_white_mug
+  - libero_90.kitchen_scene7_open_the_microwave
+  - libero_90.kitchen_scene7_put_the_white_bowl_on_the_plate
+  - libero_90.kitchen_scene7_put_the_white_bowl_to_the_right_of_the_plate
+  - libero_90.kitchen_scene8_put_the_right_moka_pot_on_the_stove
+  - libero_90.kitchen_scene8_turn_off_the_stove
+  - libero_90.kitchen_scene9_put_the_frying_pan_on_the_cabinet_shelf
+  - libero_90.kitchen_scene9_put_the_frying_pan_on_top_of_the_cabinet
+  - libero_90.kitchen_scene9_put_the_frying_pan_under_the_cabinet_shelf
+  - libero_90.kitchen_scene9_put_the_white_bowl_on_top_of_the_cabinet
+  - libero_90.kitchen_scene9_turn_on_the_stove
+  - libero_90.kitchen_scene9_turn_on_the_stove_and_put_the_frying_pan_on_it
+  - libero_90.kitchen_scene10_close_the_top_drawer_of_the_cabinet
+  - libero_90.kitchen_scene10_close_the_top_drawer_of_the_cabinet_and_put_the_black_bowl_on_top_of_it
+  - libero_90.kitchen_scene10_put_the_black_bowl_in_the_top_drawer_of_the_cabinet
+  - libero_90.kitchen_scene10_put_the_butter_at_the_back_in_the_top_drawer_of_the_cabinet_and_close_it
+  - libero_90.kitchen_scene10_put_the_butter_at_the_front_in_the_top_drawer_of_the_cabinet_and_close_it
+  - libero_90.kitchen_scene10_put_the_chocolate_pudding_in_the_top_drawer_of_the_cabinet_and_close_it
+  - libero_90.living_room_scene1_pick_up_the_alphabet_soup_and_put_it_in_the_basket
+  - libero_90.living_room_scene1_pick_up_the_cream_cheese_box_and_put_it_in_the_basket
+  - libero_90.living_room_scene1_pick_up_the_ketchup_and_put_it_in_the_basket
+  - libero_90.living_room_scene1_pick_up_the_tomato_sauce_and_put_it_in_the_basket
+  - libero_90.living_room_scene2_pick_up_the_alphabet_soup_and_put_it_in_the_basket
+  - libero_90.living_room_scene2_pick_up_the_butter_and_put_it_in_the_basket
+  - libero_90.living_room_scene2_pick_up_the_milk_and_put_it_in_the_basket
+  - libero_90.living_room_scene2_pick_up_the_orange_juice_and_put_it_in_the_basket
+  - libero_90.living_room_scene2_pick_up_the_tomato_sauce_and_put_it_in_the_basket
+  - libero_90.living_room_scene3_pick_up_the_alphabet_soup_and_put_it_in_the_tray
+  - libero_90.living_room_scene3_pick_up_the_butter_and_put_it_in_the_tray
+  - libero_90.living_room_scene3_pick_up_the_cream_cheese_and_put_it_in_the_tray
+  - libero_90.living_room_scene3_pick_up_the_ketchup_and_put_it_in_the_tray
+  - libero_90.living_room_scene3_pick_up_the_tomato_sauce_and_put_it_in_the_tray
+  - libero_90.living_room_scene4_pick_up_the_black_bowl_on_the_left_and_put_it_in_the_tray
+  - libero_90.living_room_scene4_pick_up_the_chocolate_pudding_and_put_it_in_the_tray
+  - libero_90.living_room_scene4_pick_up_the_salad_dressing_and_put_it_in_the_tray
+  - libero_90.living_room_scene4_stack_the_left_bowl_on_the_right_bowl_and_place_them_in_the_tray
+  - libero_90.living_room_scene4_stack_the_right_bowl_on_the_left_bowl_and_place_them_in_the_tray
   calvin: []
   # - calvin.lift_red_block_table_a
   # - calvin.lift_red_block_table_b

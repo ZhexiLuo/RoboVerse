@@ -16,6 +16,8 @@ logs/
 *.ckpt
 GSNet
 
+claude/
+
 deploy
 runs
 debug/
