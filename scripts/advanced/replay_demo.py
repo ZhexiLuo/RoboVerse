@@ -134,7 +134,7 @@ class ObsSaver:
 ###########################################################
 def main():
     task_cls = get_task_class(args.task)
-    camera = PinholeCameraCfg(pos=(1.5, -1.5, 1.5), look_at=(0.0, 0.0, 0.0))
+    camera = PinholeCameraCfg(pos=(2.5, -2.5, 2.0), look_at=(0.0, 0.0, 0.5), width=1280, height=720)
 
     scene_cfg = task_cls.scenario.scene if task_cls.scenario.scene is not None else args.scene
     if scene_cfg is None:

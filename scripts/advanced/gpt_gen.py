@@ -4,6 +4,7 @@ import json
 import os
 import pickle
 import re
+from pathlib import Path
 
 import emoji
 import openai
@@ -13,17 +14,22 @@ from colorama import Fore, Style
 # 1. Configuration & Setup
 # ======================================
 
-openai.api_key = ""
+MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-2024-08-06")
+BASE_URL = os.getenv("OPENAI_BASE_URL", "https://yunwu.ai/v1")
+API_KEY = os.getenv("OPENAI_API_KEY", "")
 
-OBJECT_LIST_JSON = "metasim/cfg/tasks/gpt/config/rigid_objects_init_list.json"
-ROBOT_LIST_JSON = "metasim/cfg/tasks/gpt/config/robots_init_list.json"
-TASKS_OUTPUT_FOLDER = "metasim/cfg/tasks/gpt/config/tasks"
+if not API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is required")
 
-# Where to save final PKLs
-PKL_OUTPUT_BASE = "roboverse_data/trajs/gpt"
+client = openai.OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
-# Where to save the metacfg .py files
-METACFG_OUTPUT_FOLDER = "metasim/cfg/tasks/gpt/metacfg"
+# Centralized path configuration
+CONFIG_DIR = Path("metasim/cfg/tasks/gpt/config")
+OBJECT_LIST_JSON = CONFIG_DIR / "rigid_objects_init_list.json"
+ROBOT_LIST_JSON = CONFIG_DIR / "robots_init_list.json"
+TASKS_OUTPUT_FOLDER = CONFIG_DIR / "tasks"
+PKL_OUTPUT_BASE = Path("roboverse_data/trajs/gpt")
+TASK_OUTPUT_FOLDER = Path("roboverse_pack/tasks/gpt")
 
 
 # -------------- JSON LOADING UTILS --------------
@@ -31,7 +37,7 @@ METACFG_OUTPUT_FOLDER = "metasim/cfg/tasks/gpt/metacfg"
 
 def load_all_objects_data():
     """Load the entire objects_init_list.json and return as a dict."""
-    if not os.path.isfile(OBJECT_LIST_JSON):
+    if not OBJECT_LIST_JSON.is_file():
         raise FileNotFoundError(f"Cannot find {OBJECT_LIST_JSON}")
     with open(OBJECT_LIST_JSON, encoding="utf-8") as f:
         data = json.load(f)
@@ -40,7 +46,7 @@ def load_all_objects_data():
 
 def load_all_robots_data():
     """Load the entire robots_init_list.json and return as a dict."""
-    if not os.path.isfile(ROBOT_LIST_JSON):
+    if not ROBOT_LIST_JSON.is_file():
         raise FileNotFoundError(f"Cannot find {ROBOT_LIST_JSON}")
     with open(ROBOT_LIST_JSON, encoding="utf-8") as f:
         data = json.load(f)
@@ -62,6 +68,14 @@ def load_available_robots():
 # ======================================
 
 
+def strip_markdown_code_block(content: str) -> str:
+    """Remove markdown code block wrapper if present."""
+    if content.startswith("```"):
+        content = content[3:-3] if content.endswith("```") else content[3:]
+        content = content.replace("json", "").strip()
+    return content
+
+
 def to_snake_case(s: str) -> str:
     """Convert a string to snake_case. E.g., 'Sauce Pyramid' -> 'sauce_pyramid'."""
     s = re.sub(r"[^0-9a-zA-Z]+", " ", s)
@@ -72,6 +86,18 @@ def to_camel_case(s: str) -> str:
     """Convert a string to CamelCase. E.g., 'Sauce Pyramid' -> 'SaucePyramid'."""
     s = re.sub(r"[^0-9a-zA-Z]+", " ", s)
     return "".join(word.capitalize() for word in s.split())
+
+
+def call_gpt(system_prompt: str, user_prompt: str = "") -> dict:
+    """Call GPT and return parsed JSON."""
+    messages = [{"role": "system", "content": system_prompt}]
+    if user_prompt:
+        messages.append({"role": "user", "content": user_prompt})
+    response = client.chat.completions.create(
+        model=MODEL_NAME, messages=messages, temperature=0.7, max_tokens=15000
+    )
+    content = strip_markdown_code_block(response.choices[0].message.content.strip())
+    return json.loads(content)
 
 
 # ======================================
@@ -90,7 +116,7 @@ def call_gpt_to_generate_task(user_prompt, object_list, robot_list):
       }
     """
     system_instructions = (
-        "You are a helpful assistant that invents an interesting tabletop-manipulation task.\n"
+        "You are a helpful assistant that creates tabletop-manipulation tasks based on user requests.\n"
         "We have the following objects:\n"
         f"{object_list}\n\n"
         "We have the following robots:\n"
@@ -117,30 +143,7 @@ def call_gpt_to_generate_task(user_prompt, object_list, robot_list):
         "- The 'task_language_instruction' must be 1-2 sentences at most.\n"
     )
 
-    messages = [
-        {"role": "system", "content": system_instructions},
-        {"role": "user", "content": user_prompt},
-    ]
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=messages,
-        temperature=0.7,
-        max_tokens=15000,
-    )
-    content = response.choices[0].message["content"].strip()
-
-    # Remove triple backticks if GPT includes them
-    if content.startswith("```"):
-        if content.endswith("```"):
-            content = content[3:-3]
-        else:
-            content = content[3:]
-        content = content.replace("json", "").strip()
-
-    # Convert to dict
-    data = json.loads(content)
-    return data
+    return call_gpt(system_instructions, user_prompt)
 
 
 # ======================================
@@ -216,236 +219,168 @@ def call_gpt_to_get_init_state(partial_task_json, all_objects_data, all_robots_d
         '8) No actions, no states, no extra in this JSON—only the "init_state" dict.\n'
     )
 
-    messages = [
-        {"role": "system", "content": system_instructions},
-    ]
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=messages,
-        temperature=0.7,
-        max_tokens=15000,
-    )
-    content = response.choices[0].message["content"].strip()
-
-    if content.startswith("```"):
-        if content.endswith("```"):
-            content = content[3:-3]
-        else:
-            content = content[3:]
-        content = content.replace("json", "").strip()
-
-    data = json.loads(content)
-    return data
+    return call_gpt(system_instructions)
 
 
 # ======================================
-# 4. Write Cfg .py
+# 4. Write Task .py
 # ======================================
-def write_cfg_file(final_json, object_library):
-    """
-    Generate a Python config file in metasim/cfg/tasks/gpt/metacfg/{snake_task_name}.py
-    Class name is {CamelCaseTaskName}Cfg, but the final run command will just
-    use {CamelCaseTaskName} (without "Cfg").
-    """
+def write_task_file(final_json, object_library):
+    """Generate a task file in roboverse_pack/tasks/gpt/{snake_task_name}.py."""
     task_name = final_json["task_name"]
-    # We'll keep the class name as {CamelCase}+Cfg
     snake_task_name = to_snake_case(task_name)
     camel_task_name = to_camel_case(task_name)
-    metacfg_class_name = camel_task_name + "Cfg"
+    task_class_name = camel_task_name + "Task"
 
-    # The .py file we want to write
-    out_py = os.path.join(METACFG_OUTPUT_FOLDER, f"{snake_task_name}.py")
+    out_py = TASK_OUTPUT_FOLDER / f"{snake_task_name}.py"
 
-    # The objects we want to define in 'objects = [...]':
     robots_involved = final_json.get("robot_involved", [])
     init_state_data = final_json["init_state"]
+    task_desc = final_json.get("task_language_instruction", "")
 
+    # Build objects list
     object_list_entries = []
     for name in init_state_data.keys():
-        # skip if the key is a robot
         if name in robots_involved:
             continue
         if name not in object_library:
-            print(f"Warning: object '{name}' not found in library; skipping in metacfg.")
+            print(f"Warning: object '{name}' not found in library; skipping.")
             continue
         filepath = object_library[name]["filepath"]
-        entry = (
-            "RigidObjCfg(\n"
-            f'            name="{name}",\n'
-            "            physics=PhysicStateType.RIGIDBODY,\n"
-            f'            usd_path="{filepath}",\n'
-            "        )"
-        )
+        if filepath.endswith(".xml"):
+            entry = f'        RigidObjCfg(name="{name}", physics=PhysicStateType.RIGIDBODY, mjcf_path="{filepath}")'
+        else:
+            entry = f'        RigidObjCfg(name="{name}", physics=PhysicStateType.RIGIDBODY, usd_path="{filepath}")'
         object_list_entries.append(entry)
 
-    objects_block = "    objects = [\n"
-    for idx, e in enumerate(object_list_entries):
-        if idx == 0:
-            objects_block += f"        {e}"
-        else:
-            objects_block += f",\n        {e}"
-    objects_block += "\n    ]\n"
+    objects_str = ",\n".join(object_list_entries) if object_list_entries else ""
+    traj_path = PKL_OUTPUT_BASE / snake_task_name / "franka_v2.pkl"
 
-    # The trajectory file path
-    snake_name = snake_task_name
-    traj_path = f"roboverse_data/trajs/gpt/{snake_name}/franka_v2.pkl"
+    py_content = f'''"""GPT-generated task: {task_desc}"""
 
-    # The .py file content
-    py_content = f"""import math
-from metasim.scenario.checkers import DetectedChecker, RelativeBboxDetector
-from metasim.scenario.objects import ArticulationObjCfg, RigidObjCfg
-from metasim.constants import BenchmarkType, PhysicStateType, TaskType
-from metasim.utils import configclass
+from __future__ import annotations
 
-from metasim.scenario.tasks.base_task_cfg import BaseTaskCfg
+from metasim.constants import PhysicStateType
+from metasim.scenario.objects import RigidObjCfg
+from metasim.scenario.scenario import ScenarioCfg
+from metasim.task.registry import register_task
+
+from .gpt_base import GptBaseTask
 
 
-@configclass
-class {metacfg_class_name}(BaseTaskCfg):
-    source_benchmark = BenchmarkType.GPT
-    task_type = TaskType.TABLETOP_MANIPULATION
-    episode_length = 250
-
-{objects_block}
+@register_task("gpt.{snake_task_name}", "gpt:{camel_task_name}")
+class {task_class_name}(GptBaseTask):
+    scenario = ScenarioCfg(
+        objects=[
+{objects_str}
+        ],
+        robots=["franka"],
+    )
+    max_episode_steps = 250
+    task_desc = "{task_desc}"
     traj_filepath = "{traj_path}"
-"""
+'''
 
-    os.makedirs(METACFG_OUTPUT_FOLDER, exist_ok=True)
+    TASK_OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
     with open(out_py, "w", encoding="utf-8") as f:
         f.write(py_content)
 
-    return out_py, snake_task_name, metacfg_class_name, camel_task_name
+    return str(out_py), snake_task_name, task_class_name, camel_task_name
 
 
 # ======================================
-# 5. Main Workflow
+# 5. Task Generation
+# ======================================
+
+
+def get_user_prompt() -> str:
+    """Get user input prompt."""
+    print(Fore.YELLOW + emoji.emojize("🔥 What can I help you with today? ✨") + Style.RESET_ALL)
+    prompt = input("> ").strip()
+    return prompt or "Please generate an interesting task for me."
+
+
+def generate_task(user_prompt: str, all_objs: dict, all_robs: dict) -> dict:
+    """Generate task via two GPT calls."""
+    partial = call_gpt_to_generate_task(user_prompt, list(all_objs.keys()), list(all_robs.keys()))
+    for key in ["task_name", "task_language_instruction", "robot_involved", "objects_involved"]:
+        if key not in partial:
+            raise ValueError(f"GPT missing key '{key}' in partial_task.")
+    init_state = call_gpt_to_get_init_state(partial, all_objs, all_robs)
+    if "init_state" not in init_state:
+        raise ValueError("GPT did not provide 'init_state' top-level in second call.")
+    partial["init_state"] = init_state["init_state"]
+    return partial
+
+
+# ======================================
+# 6. Writers
+# ======================================
+
+
+def write_task_json(task: dict) -> str:
+    """Write task JSON file."""
+    snake_name = to_snake_case(task["task_name"])
+    path = TASKS_OUTPUT_FOLDER / f"{snake_name}.json"
+    TASKS_OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(task, f, indent=2, ensure_ascii=False)
+    return str(path)
+
+
+def write_task_pkl(task: dict) -> str:
+    """Write task PKL file."""
+    snake_name = to_snake_case(task["task_name"])
+    roverse_data = {}
+    for robot_name in task["robot_involved"]:
+        if robot_name not in task["init_state"]:
+            raise ValueError(f"Robot '{robot_name}' not found in final init_state JSON.")
+        dof_pos_dict = task["init_state"][robot_name].get("dof_pos", {})
+        zero_dof_target = {joint: 0.0 for joint in dof_pos_dict.keys()}
+        roverse_data[robot_name] = [
+            {"actions": [{"dof_pos_target": zero_dof_target}], "init_state": task["init_state"], "states": [], "extra": None}
+        ]
+    folder = PKL_OUTPUT_BASE / snake_name
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / "franka_v2.pkl"
+    with open(path, "wb") as f:
+        pickle.dump(roverse_data, f)
+    return str(path)
+
+
+# ======================================
+# 7. UI
+# ======================================
+
+
+def print_summary(task: dict, json_path: str, pkl_path: str, cfg_path: str, snake_name: str, cfg_class: str, camel_name: str):
+    """Print colored summary."""
+    print("\n" + Fore.GREEN + emoji.emojize("🚀 The task has been generated! 🎉") + Style.RESET_ALL)
+    print(Fore.CYAN + "🔹 Task Name: " + Style.BRIGHT + task["task_name"] + Style.RESET_ALL)
+    print(Fore.MAGENTA + "📝 Task Language Instruction: " + Style.BRIGHT + task["task_language_instruction"] + Style.RESET_ALL + "\n")
+    print(Fore.BLUE + "📁 Task JSON saved to:" + Style.RESET_ALL)
+    print(Fore.YELLOW + f"  {json_path}" + Style.RESET_ALL)
+    print(Fore.BLUE + "📦 Task PKL saved to:" + Style.RESET_ALL)
+    print(Fore.YELLOW + f"  {pkl_path}" + Style.RESET_ALL)
+    print(Fore.BLUE + "🔧 Task Python file saved to:" + Style.RESET_ALL)
+    print(Fore.YELLOW + f"  {cfg_path}" + Style.RESET_ALL + "\n")
+    print(Fore.GREEN + emoji.emojize("🎮 You can replay your task by running:") + Style.RESET_ALL)
+    print(Fore.WHITE + f"  python scripts/advanced/replay_demo.py --sim=mujoco --task=gpt.{snake_name} --num_envs 1" + Style.RESET_ALL + "\n")
+
+
+# ======================================
+# 8. Main Workflow
 # ======================================
 
 
 def main():
-    # Step A: Greet the user.
-    print(Fore.YELLOW + emoji.emojize("🔥 What can I help you with today? ✨") + Style.RESET_ALL)
-    # print("What can I help you with today?")
-    user_prompt = input("> ").strip()
-    if not user_prompt:
-        user_prompt = "Please generate an interesting task for me."
-
-    # Step B: Load available objects/robots (names) for GPT's first call
-    available_objects = load_available_objects()
-    available_robots = load_available_robots()
-
-    # Step C: Call GPT => partial task JSON
-    partial_task = call_gpt_to_generate_task(user_prompt, available_objects, available_robots)
-
-    # Validate partial JSON
-    for key in ["task_name", "task_language_instruction", "robot_involved", "objects_involved"]:
-        if key not in partial_task:
-            raise ValueError(f"GPT missing key '{key}' in partial_task.")
-
-    # Step D: Append "init_state" by calling GPT again
-    all_objs = load_all_objects_data()
-    all_robs = load_all_robots_data()
-    init_state_data = call_gpt_to_get_init_state(partial_task, all_objs, all_robs)
-    if "init_state" not in init_state_data:
-        raise ValueError("GPT did not provide 'init_state' top-level in second call.")
-
-    partial_task["init_state"] = init_state_data["init_state"]
-
-    # Step E: Write final JSON
-    snake_task_name = to_snake_case(partial_task["task_name"])
-    final_json_path = os.path.join(TASKS_OUTPUT_FOLDER, f"{snake_task_name}.json")
-    with open(final_json_path, "w", encoding="utf-8") as f:
-        json.dump(partial_task, f, indent=2, ensure_ascii=False)
-
-    # Step F: Convert to PKL with RoboVerse structure
-    roverse_data = {}
-    for robot_name in partial_task["robot_involved"]:
-        if robot_name not in partial_task["init_state"]:
-            raise ValueError(f"Robot '{robot_name}' not found in final init_state JSON.")
-        dof_pos_dict = partial_task["init_state"][robot_name].get("dof_pos", {})
-        zero_dof_target = {joint: 0.0 for joint in dof_pos_dict.keys()}
-
-        roverse_data[robot_name] = [
-            {
-                "actions": [{"dof_pos_target": zero_dof_target}],
-                "init_state": partial_task["init_state"],
-                "states": [],
-                "extra": None,
-            }
-        ]
-
-    pkl_folder = os.path.join(PKL_OUTPUT_BASE, snake_task_name)
-    os.makedirs(pkl_folder, exist_ok=True)
-    pkl_path = os.path.join(pkl_folder, "franka_v2.pkl")
-
-    with open(pkl_path, "wb") as f:
-        pickle.dump(roverse_data, f)
-
-    # Step G: Write metacfg
-    metacfg_path, snake_task_name_out, metacfg_class_name, camel_task_name = write_cfg_file(partial_task, all_objs)
-
-    # Step H: Print final info
-    print("\n" + Fore.GREEN + emoji.emojize("🚀 The task has been generated! 🎉") + Style.RESET_ALL)
-    # print("\nThe task has been generated!\n")
-
-    # print(f"Task Name: {partial_task['task_name']}")
-
-    # print(f"Task Language Instruction: {partial_task['task_language_instruction']}\n")
-
-    # print(f"Task JSON saved to:\n  {final_json_path}")
-
-    # print(f"Task PKL saved to:\n  {pkl_path}")
-
-    # print(f"Task Cfg Python file saved to:\n  {metacfg_path}\n")
-
-    # print("Please add this line in metasim/cfg/tasks/__init__.py to import the new metacfg class:")
-
-    # print(f"  from .gpt.metacfg.{snake_task_name_out} import {metacfg_class_name}\n")
-
-    # # Here: the user wants to run with the CamelCase name WITHOUT "Cfg" appended
-    # # So the final run command is: --task=SOME_CAMEL_CASE, not --task=...Cfg
-    # print("You can replay your task by running this command line (no 'Cfg' in the name):")
-    # print(f"  python scripts/advanced/replay_demo.py --sim=isaaclab --task={camel_task_name} --num_envs 1\n")
-
-    print(Fore.CYAN + "🔹 Task Name: " + Style.BRIGHT + partial_task["task_name"] + Style.RESET_ALL)
-
-    print(
-        Fore.MAGENTA
-        + "📝 Task Language Instruction: "
-        + Style.BRIGHT
-        + partial_task["task_language_instruction"]
-        + Style.RESET_ALL
-        + "\n"
-    )
-
-    print(Fore.BLUE + "📁 Task JSON saved to:" + Style.RESET_ALL)
-    print(Fore.YELLOW + f"  {final_json_path}" + Style.RESET_ALL)
-
-    print(Fore.BLUE + "📦 Task PKL saved to:" + Style.RESET_ALL)
-    print(Fore.YELLOW + f"  {pkl_path}" + Style.RESET_ALL)
-
-    print(Fore.BLUE + "🔧 Task Cfg Python file saved to:" + Style.RESET_ALL)
-    print(Fore.YELLOW + f"  {metacfg_path}" + Style.RESET_ALL + "\n")
-
-    print(
-        Fore.RED
-        + emoji.emojize("⚠️ Please add this line in metasim/cfg/tasks/gpt/__init__.py to import the new metacfg class:")
-        + Style.RESET_ALL
-    )
-    print(Fore.WHITE + f"  from .metacfg.{snake_task_name_out} import {metacfg_class_name}" + Style.RESET_ALL + "\n")
-
-    print(
-        Fore.GREEN
-        + emoji.emojize("🎮 You can replay your task by running this command (no 'Cfg' in the name):")
-        + Style.RESET_ALL
-    )
-    print(
-        Fore.WHITE
-        + f"  python scripts/advanced/replay_demo.py --sim=isaaclab --task=gpt:{camel_task_name} --num_envs 1"
-        + Style.RESET_ALL
-        + "\n"
-    )
+    user_prompt = get_user_prompt()
+    all_objs, all_robs = load_all_objects_data(), load_all_robots_data()
+    task = generate_task(user_prompt, all_objs, all_robs)
+    json_path = write_task_json(task)
+    pkl_path = write_task_pkl(task)
+    cfg_path, snake_name, cfg_class, camel_name = write_task_file(task, all_objs)
+    print_summary(task, json_path, pkl_path, cfg_path, snake_name, cfg_class, camel_name)
 
 
 if __name__ == "__main__":

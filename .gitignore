@@ -93,6 +93,8 @@ MUJOCO_LOG.TXT
 *.egg-info
 build
 metasim/cfg/tasks/arnold/Arnold
+metasim/cfg/tasks/gpt/config/tasks/
+
 dist
 
 id_ed25519*
@@ -106,3 +108,6 @@ id_rsa*
 
 # for test cache
 .pytest_cache/
+
+# Claude Code
+.claude/
