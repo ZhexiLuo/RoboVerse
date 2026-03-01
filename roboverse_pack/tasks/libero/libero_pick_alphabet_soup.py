@@ -71,7 +71,7 @@ class LiberoPickAlphabetSoupTask(LiberoBaseTask):
     )
 
     # task horizon
-    max_max_episode_steps = 250
+    max_episode_steps = 250
     task_desc = "Pick the alphabet soup and place it in the basket"
     checker = DetectedChecker(
         obj_name="alphabet_soup",
