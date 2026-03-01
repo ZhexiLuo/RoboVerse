@@ -16,7 +16,7 @@ class LiberoBaseTask(BaseTaskEnv):
     """
 
     scenario = None
-    max_episode_steps = 500
+    max_episode_steps = 250
     task_desc = None
     checker = None
     traj_filepath = None

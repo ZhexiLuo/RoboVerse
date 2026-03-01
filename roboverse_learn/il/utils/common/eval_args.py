@@ -38,7 +38,7 @@ class Args:
     """Number of steps to take for each action set"""
     save_video_freq: int = 1
     """Frequency of saving videos"""
-    max_step: int = 500
+    max_step: int = 250
     """Maximum number of steps to collect"""
     gpu_id: int = 0
     """GPU ID to use"""
