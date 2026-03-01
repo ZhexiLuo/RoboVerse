@@ -1,35 +1,62 @@
+import datetime
+import glob
 import os
-from pathlib import Path
+import random
+import re
 
 import yaml
 
-NUM_DEMO_SUCCESS = 100
-LIBERO_SUITES = ["libero", "libero_90"]
 
-with open("dashboard/conf.yml") as f:
+def to_snake_case(camel_str: str) -> str:
+    """Converts a string from camel case to snake case.
+
+    Args:
+        camel_str: A string in camel case.
+
+    Returns:
+        A string in snake case (i.e. with '_')
+    """
+    camel_str = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", camel_str)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", camel_str).lower()
+
+
+with open("dashboard/conf_dataset.yml") as f:
     all_tasks = yaml.load(f, Loader=yaml.FullLoader)
 
+
+tasks = all_tasks["tasks"]
+
+benchmarks = tasks.keys()
+
 tasks_list = []
-for suite in LIBERO_SUITES:
-    tasks_list.extend(all_tasks["tasks"].get(suite, []))
+for benchmark in benchmarks:
+    tasks_list.extend(tasks[benchmark])
 
-print(f"📋 Total tasks: {len(tasks_list)}")
+print(tasks_list)
+
+# breakpoint()
+
+rendered_dir = "roboverse_demo/demo_isaaclab"
+
+already_rendered = [
+    (to_snake_case(path.split("/")[-1].split("-")[0]), int(path.split("/")[-1].split("-")[1][-1]))
+    for path in glob.glob(os.path.join(rendered_dir, "*"))
+    if "standard_render" not in path
+]
 
 
-def is_done(task: str) -> bool:
-    # Check success dir under demo_mujoco/{task}/robot-franka/success/
-    success_dir = Path(f"roboverse_demo/demo_mujoco/{task}/robot-franka/success")
-    return success_dir.exists() and len(list(success_dir.iterdir())) >= NUM_DEMO_SUCCESS
-
+random.shuffle(tasks_list)
+# tasks_list = ["pick_cube"]
+# tasks_list = ["stack_cube"]
 
 for task in tasks_list:
-    if is_done(task):
-        print(f"✅ [skip] {task}")
-        continue
-    cmd = (
-        f"MUJOCO_GL=egl python scripts/advanced/collect_demo.py "
-        f"--sim=mujoco --task={task} --num_envs=1 --headless "
-        f"--num_demo_success={NUM_DEMO_SUCCESS} --run_unfinished"
-    )
-    print(f"🚀 {cmd}")
-    os.system(cmd)
+    for level in range(4):
+        if (task, level) in already_rendered:
+            continue
+        time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        command = f"python metasim/scripts/collect_demo.py --run_all --task={task} --sim=isaaclab --headless --cust_name standard_render_{time_str} --random.level {level}"
+        print(command)
+        os.system(command)
+        command = f"/isaac-sim/python.sh metasim/scripts/collect_demo.py --run_all --task={task} --sim=isaaclab --headless --cust_name standard_render_{time_str} --random.level {level}"
+        print(command)
+        os.system(command)

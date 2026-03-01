@@ -9,7 +9,7 @@ training_params:
   num_epochs: 1000
   gradient_accumulate_every: 1
   # EMA destroys performance when used with BatchNorm
-  # replace BatchNorm with GroupNorm.
+  # replace BatchNorm with GroupNorm.    
   use_ema: True
   freeze_encoder: False
   # training loop control
