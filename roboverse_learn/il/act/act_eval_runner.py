@@ -117,7 +117,7 @@ def main():
         data_types=["rgb", "depth"],
         width=256,
         height=256,
-        pos=(1.5, 0.0, 1.5),
+        pos=(1.0, 0.0, 0.75),
         look_at=(0.0, 0.0, 0.0),
     )
     # randomization = RandomizationCfg(camera=False, light=False, ground=False, reflection=False)
