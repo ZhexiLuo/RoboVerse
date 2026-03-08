@@ -288,15 +288,12 @@ def main():
 
                 action = torch.tensor(action, dtype=torch.float32, device="cuda")
 
-                # IK solver expects original joint order, but state uses alphabetical order
-                reorder_idx = env.handler.get_joint_reindex(args.robot)
-                inverse_reorder_idx = [reorder_idx.index(i) for i in range(len(reorder_idx))]
-                actions = action[inverse_reorder_idx].cpu()
-                inner_actions = {"dof_pos_target": dict(zip(scenario.robots[0].joint_limits.keys(), actions))}
+                # action is in alphabetical joint order (same as zarr training data)
+                # zip directly with sorted joint names to avoid double-reindex bug
+                sorted_joint_names = sorted(scenario.robots[0].joint_limits.keys())
+                actions = action.cpu()
+                inner_actions = {"dof_pos_target": dict(zip(sorted_joint_names, actions))}
                 actions = {"franka": inner_actions}
-                #actions = [{"dof_pos_target": dict(zip(scenario.robots[0].joint_limits.keys(), action))}]
-                #log.debug(f"Actions: {actions}")
-                # log.debug(f"Action: {actions}")
                 obs, reward, success, time_out, extras = env.step(actions)
                 env.handler.refresh_render()
                 # print(reward, success, time_out)
