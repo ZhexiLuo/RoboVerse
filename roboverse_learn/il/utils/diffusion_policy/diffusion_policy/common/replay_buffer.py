@@ -235,9 +235,26 @@ class ReplayBuffer:
         if backend == "numpy":
             print("backend argument is deprecated!")
             store = None
-        group = zarr.open(os.path.expanduser(zarr_path), "r")
+        # zarr v3 compat: open_group accepts path directly
+        src_group = zarr.open_group(os.path.expanduser(zarr_path), mode="r")
+        # numpy path: read directly from group (zarr v3 compat)
+        if store is None:
+            meta = dict()
+            for key, value in src_group["meta"].members():
+                if len(value.shape) == 0:
+                    meta[key] = np.array(value)
+                else:
+                    meta[key] = value[:]
+            data_group = src_group["data"]
+            _keys = keys if keys is not None else list(data_group.array_keys())
+            data = dict()
+            for key in _keys:
+                data[key] = data_group[key][:]
+            root = {"meta": meta, "data": data}
+            return cls.create_from_group(root, **kwargs)
+        # fallback: pass store object for zarr-to-zarr copy
         return cls.copy_from_store(
-            src_store=group.store,
+            src_store=src_group.store,
             store=store,
             keys=keys,
             chunks=chunks,
