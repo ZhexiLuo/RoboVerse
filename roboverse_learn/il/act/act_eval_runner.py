@@ -15,8 +15,6 @@ from rich.logging import RichHandler
 rootutils.setup_root(__file__, pythonpath=True)
 log.configure(handlers=[{"sink": RichHandler(), "format": "{message}"}])
 # from metasim.scenario.scenario import ScenarioCfg
-from metasim.utils.kinematics import get_curobo_models
-
 from metasim.task.registry import get_task_class
 
 
@@ -224,11 +222,6 @@ def main():
     toc = time.time()
     log.trace(f"Time to load data: {toc - tic:.2f}s")
 
-    ## cuRobo controller
-    *_, robot_ik = get_curobo_models(scenario.robots[0])
-    curobo_n_dof = len(robot_ik.robot_config.cspace.joint_names)
-    ee_n_dof = len(scenario.robots[0].gripper_open_q)
-
     ## Reset before first step
     TotalSuccess = 0
     num_eval: int = args.num_eval
@@ -298,7 +291,7 @@ def main():
                 # IK solver expects original joint order, but state uses alphabetical order
                 reorder_idx = env.handler.get_joint_reindex(args.robot)
                 inverse_reorder_idx = [reorder_idx.index(i) for i in range(len(reorder_idx))]
-                actions = action[inverse_reorder_idx]
+                actions = action[inverse_reorder_idx].cpu()
                 inner_actions = {"dof_pos_target": dict(zip(scenario.robots[0].joint_limits.keys(), actions))}
                 actions = {"franka": inner_actions}
                 #actions = [{"dof_pos_target": dict(zip(scenario.robots[0].joint_limits.keys(), action))}]

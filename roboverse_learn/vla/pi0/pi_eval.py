@@ -53,6 +53,7 @@ class PiPolicyRunner:
         gripper_threshold: float = 0.02,
         device: str = "cuda",
         actions_per_call: Optional[int] = None,
+        state_dim: int = 0,
     ):
         if num_envs != 1:
             raise ValueError("pi_eval currently supports num_envs == 1")
@@ -64,6 +65,7 @@ class PiPolicyRunner:
         self.gripper_threshold = gripper_threshold
         self.device = device
         self.actions_per_call = actions_per_call if actions_per_call and actions_per_call > 0 else None
+        self.state_dim = state_dim  # truncate state to first N dims (0 = no truncation)
 
         self.policy_cfg = PiPolicyCfg()
         self.client = websocket_client_policy.WebsocketClientPolicy(host=policy_host, port=policy_port)
@@ -93,8 +95,9 @@ class PiPolicyRunner:
         # curr_robot_q = joint_pos[:, self.inverse_reorder_idx]
         return joint_pos
 
-    def _build_state_vector(self, joint_pos_alpha: torch.Tensor) -> np.ndarray:
-        return joint_pos_alpha[0].cpu().numpy().astype(np.float32)
+    def _build_state_vector(self, joint_pos_alpha: torch.Tensor, state_dim: int = 0) -> np.ndarray:
+        vec = joint_pos_alpha[0].cpu().numpy().astype(np.float32)
+        return vec[:state_dim] if state_dim > 0 else vec
 
     def _get_prompt(self) -> str:
         task_env = getattr(self.env, "task_env", None)
@@ -112,7 +115,7 @@ class PiPolicyRunner:
     def _build_policy_observation(self, obs) -> Dict[str, Any]:
         img_uint8 = self._compress_image(obs)
         curr_robot_q = self._extract_robot_state(obs)
-        state_vec = self._build_state_vector(curr_robot_q)
+        state_vec = self._build_state_vector(curr_robot_q, self.state_dim)
         prompt = self._get_prompt()
         fake_wrist = np.zeros_like(img_uint8)
         return {
@@ -249,6 +252,8 @@ def parse_args() -> argparse.Namespace:
                         help="Threshold on finger joint values to treat the gripper as open")
     parser.add_argument("--actions-per-call", type=int, default=0,
                         help="Number of cached actions to use before requesting a new chunk (0 = consume entire chunk)")
+    parser.add_argument("--state-dim", type=int, default=0,
+                        help="Truncate state vector to first N dims (0 = no truncation; use 8 for pi0_libero compat)")
     return parser.parse_args()
 
 
@@ -293,6 +298,7 @@ def main() -> bool:
         gripper_threshold=args.gripper_threshold,
         actions_per_call=args.actions_per_call,
         device=args.device,
+        state_dim=args.state_dim,
     )
 
     start_time = time.time()

@@ -14,7 +14,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROBOVERSE_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 OPENPI_ROOT="${ROBOVERSE_ROOT}/third_party/openpi"
 
-config_name="${1:-pi0_roboverse_lora}"
+config_name="${1:-pi0_libero}"
 ckpt_dir="${CKPT_DIR:-${OPENPI_ROOT}/checkpoints/pi0_libero}"
 
 if [ ! -d "${OPENPI_ROOT}" ]; then
