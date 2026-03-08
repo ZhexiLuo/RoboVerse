@@ -18,7 +18,7 @@ from gymnasium import make_vec
 from metasim.scenario.cameras import PinholeCameraCfg
 from metasim.utils import configclass
 from metasim.utils.obs_utils import ObsSaver
-from metasim.utils.ik_solver import process_gripper_command, setup_ik_solver
+from metasim.utils.ik_solver import process_gripper_command
 
 from openpi_client import image_tools, websocket_client_policy
 
@@ -46,7 +46,6 @@ class PiPolicyRunner:
         scenario,
         num_envs: int,
         robot_name: str,
-        solver: str,
         policy_host: str,
         policy_port: int,
         image_size: int = 224,
@@ -71,7 +70,6 @@ class PiPolicyRunner:
         self.client = websocket_client_policy.WebsocketClientPolicy(host=policy_host, port=policy_port)
 
         self.robot_cfg = self.scenario.robots[0]
-        self.ik_solver = setup_ik_solver(self.robot_cfg, solver)
         self.reorder_idx = None
         self.inverse_reorder_idx = None
 
@@ -128,14 +126,17 @@ class PiPolicyRunner:
     def _decode_single_action(self, action: np.ndarray) -> list[dict]:
         action = action.astype(np.float32)
 
-        finger_vals = torch.tensor(action[:2], device=self.device)
-        gripper_binary = torch.tensor(
-            [1.0 if float(finger_vals.mean()) > self.gripper_threshold else 0.0],
-            device=self.device,
-        )
-        gripper_widths = process_gripper_command(gripper_binary, self.robot_cfg, self.device)
+    def _decode_single_action(self, action: np.ndarray) -> list[dict]:
+        action = action.astype(np.float32)
 
-        arm_target = torch.tensor(action[2:], device=self.device).unsqueeze(0)
+        # pi0_libero outputs 7-dim: 7 arm joints (delta), no separate gripper token
+        # We treat the last arm joint value's sign as a gripper binary signal
+        # (positive = open, negative = close) as an approximation
+        arm_joints = action[:7]
+        gripper_signal = torch.tensor([1.0 if action[-1] > 0 else 0.0], device=self.device)
+        gripper_widths = process_gripper_command(gripper_signal, self.robot_cfg, self.device)
+
+        arm_target = torch.tensor(arm_joints, device=self.device).unsqueeze(0)
         joint_target = torch.cat([arm_target, gripper_widths], dim=-1)
 
         joint_names = list(self.robot_cfg.joint_limits.keys())
@@ -243,8 +244,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num_episodes", type=int, default=1)
     parser.add_argument("--max_steps", type=int, default=250)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument("--solver", type=str, default="pyroki", choices=["curobo", "pyroki"],
-                        help="IK backend used for composing joint commands")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output-dir", type=str, default="./pi_eval_output")
     parser.add_argument("--image-size", type=int, default=224)
@@ -291,7 +290,6 @@ def main() -> bool:
         scenario=env.scenario,
         num_envs=args.num_envs,
         robot_name=args.robot,
-        solver=args.solver,
         policy_host=args.policy_host,
         policy_port=args.policy_port,
         image_size=args.image_size,
