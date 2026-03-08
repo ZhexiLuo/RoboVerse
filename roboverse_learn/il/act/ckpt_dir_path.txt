@@ -1,1 +1,1 @@
-info/outputs/ACT/2025.10.18/08.55.17_close_box_obs:joint_pos_act:joint_pos_chunk10_100
+info/outputs/ACT/2026.03.08/22.26.45_libero.orange_juice_obs:joint_pos_act:joint_pos_chunk20_99

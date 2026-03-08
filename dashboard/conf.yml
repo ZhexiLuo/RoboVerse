@@ -94,7 +94,6 @@ tasks:
   - libero.pick_butter
   - libero.pick_chocolate_pudding
   - libero.pick_cream_cheese
-  - libero.pick_ketchup
   - libero.pick_milk
   - libero.orange_juice
   - libero.pick_salad_dressing

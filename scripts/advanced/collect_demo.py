@@ -926,6 +926,10 @@ def main():
         global_step += 1
 
     log.info("Finalizing")
+    # Discard any in-progress demos that were interrupted by early break
+    for demo_idx in list(collector.cache.keys()):
+        log.warning(f"Discarding in-progress demo {demo_idx} (loop ended early)")
+        del collector.cache[demo_idx]
     collector.final()
     env.close()
 

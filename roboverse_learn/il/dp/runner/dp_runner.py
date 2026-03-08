@@ -547,13 +547,12 @@ class DPRunner(BaseRunner):
 
         time_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         checkpoint = self.get_checkpoint_path()
-        # checkpoint = ckpt_path if checkpoint is None else checkpoint
-        checkpoint = ckpt_path if ckpt_path is None else checkpoint
+        checkpoint = ckpt_path if ckpt_path is not None else checkpoint
         if checkpoint is None:
             raise ValueError(
                 "No checkpoint found, please provide a valid checkpoint path."
             )
-        args.checkpoint_path = checkpoint
+        args.checkpoint_path = pathlib.Path(checkpoint)
         ckpt_name = args.checkpoint_path.name + "_" + time_str
         ckpt_name = f"{args.task}/{args.algo}/{args.robot}/{ckpt_name}"
         runnerCls = get_runner(args.algo)
