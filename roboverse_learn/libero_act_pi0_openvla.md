@@ -58,18 +58,25 @@ bash roboverse_learn/vla/pi0/start_server.sh pi0_libero
 # Wait for "Server listening..." before running eval
 ```
 
+**Step 3: Start server (tmux window pi0_server)**
+```bash
+# Terminal 1 — default config is now pi0_libero (8-dim state)
+bash roboverse_learn/vla/pi0/start_server.sh
+# Wait for "server listening on 0.0.0.0:8000" before running eval
+```
+
 **Step 4: Run eval (tmux window pi0_eval)**
 ```bash
-# Terminal 2
+# Terminal 2 — pass --state-dim 8 to truncate RoboVerse 9-dim → LIBERO 8-dim
 bash roboverse_learn/vla/pi0/eval_libero.sh
 # Logs: claude/log/pi0_{task}.log
 # Output: claude/out/pi0_eval/{task}/
 ```
 
-> ⚠️ **Known issue**: `pi0_libero` uses 8-dim state (libero_policy), but `pi_eval.py` sends
-> 9-dim (roboverse_policy). Need to resolve before running: either use `pi0_libero` config
-> on server (which normalizes based on LIBERO stats), or adapt pi_eval.py to truncate state.
-> **Status: TODO — discuss approach before running.**
+> **Notes on pi0_libero compatibility**:
+> - Server uses `pi0_libero` config (LIBERO norm stats, 8-dim state, 7-dim action output)
+> - `pi_eval.py` truncates state to 8-dim via `--state-dim 8`
+> - Action decode: 7-dim arm joints, gripper binary inferred from sign of last action value
 
 ---
 
@@ -102,29 +109,37 @@ MODEL_PATH=openvla/openvla-7b bash roboverse_learn/vla/OpenVLA/eval_libero.sh
 
 ### ACT (trained, 100 epochs)
 
-| Task | Checkpoint | Success Rate | Notes |
-|------|-----------|-------------|-------|
-| libero.pick_alphabet_soup | 🔄 training | — | Epoch ~30/100 |
-| libero.pick_bbq_sauce | ⏳ pending | — | |
-| libero.pick_butter | ⏳ pending | — | |
-| libero.pick_chocolate_pudding | ⏳ pending | — | |
-| libero.pick_cream_cheese | ⏳ pending | — | |
-| libero.pick_milk | ⏳ pending | — | |
-| libero.orange_juice | ⏳ pending | — | |
-| libero.pick_salad_dressing | ⏳ pending | — | |
-| libero.pick_tomato_sauce | ⏳ pending | — | |
+| Task | Val Loss | Status | Success Rate |
+|------|----------|--------|-------------|
+| libero.pick_alphabet_soup | 0.280 (ep97) | 🔄 eval running | — |
+| libero.pick_bbq_sauce | 0.277 (ep91) | 🔄 eval running | — |
+| libero.pick_butter | 0.317 (ep82) | 🔄 eval running | — |
+| libero.pick_chocolate_pudding | 0.305 (ep93) | 🔄 eval running | — |
+| libero.pick_cream_cheese | 0.292 (ep88) | 🔄 eval running | — |
+| libero.pick_milk | 0.269 (ep93) | 🔄 eval running | — |
+| libero.orange_juice | 0.309 (ep90) | 🔄 eval running | — |
+| libero.pick_salad_dressing | — | 🔄 training | — |
+| libero.pick_tomato_sauce | — | 🔄 training | — |
 
 ### π₀ (zero-shot, pi0_libero checkpoint)
 
-| Task | Success Rate | Notes |
-|------|-------------|-------|
-| — | ⏳ blocked (state-dim mismatch, see Known Issues) | Download: 4.8G/11.2G |
+| Task | Status | Success Rate |
+|------|--------|-------------|
+| libero.pick_alphabet_soup | 🔄 45/99 eps | — |
+| libero.pick_bbq_sauce | ⏳ queued | — |
+| libero.pick_butter | ⏳ queued | — |
+| libero.pick_chocolate_pudding | ⏳ queued | — |
+| libero.pick_cream_cheese | ⏳ queued | — |
+| libero.pick_milk | ⏳ queued | — |
+| libero.orange_juice | ⏳ queued | — |
+| libero.pick_salad_dressing | ⏳ queued | — |
+| libero.pick_tomato_sauce | ⏳ queued | — |
 
 ### OpenVLA (zero-shot, openvla-7b)
 
-| Task | Success Rate | Notes |
-|------|-------------|-------|
-| — | 🔄 dry run in progress | |
+| Task | Status | Success Rate |
+|------|--------|-------------|
+| — | ⏳ model downloading (2/3 shards) | — |
 
 ---
 
@@ -134,23 +149,18 @@ MODEL_PATH=openvla/openvla-7b bash roboverse_learn/vla/OpenVLA/eval_libero.sh
 |------|-------|
 | 2026-03-08 | zarr data ready for all 9 tasks |
 | 2026-03-08 | ACT infra verified (zarr v3 fix, 1-epoch dry run) |
-| 2026-03-08 | ACT training started in tmux:act_libero |
-| 2026-03-08 | openpi installed, pi0_roboverse_lora config registered |
-| 2026-03-08 | OpenVLA conda env ready |
-| 2026-03-08 | pi0_libero download in progress (4.8G/11.2G) |
+| 2026-03-08 | ACT training completed for 7/9 tasks (salad+tomato zarr was empty, fixed+retraining) |
+| 2026-03-08 | ACT eval running (fixed: curobo→removed, CUDA tensor→.cpu()) |
+| 2026-03-08 | openpi installed, pi0_libero downloaded (9.8GB) |
+| 2026-03-08 | π₀ eval running (fixed: pyroki→removed, 7-dim action decode, --state-dim 8) |
+| 2026-03-08 | OpenVLA model downloading (~15GB, 2/3 shards done) |
 
 ---
 
-## Known Issues
+## Known Issues (resolved)
 
-1. **π₀ state-dim mismatch**: `pi0_libero` checkpoint expects 8-dim state (LIBERO format),
-   `pi_eval.py` sends 9-dim RoboVerse format. Options:
-   - (A) Use `pi0_libero` config on server + modify `pi_eval.py` to send 8-dim state
-   - (B) Use `pi0_roboverse_lora` config (but needs pi0_base checkpoint, not pi0_libero)
-   - **Recommended: Option A** — truncate last dim in pi_eval.py (gripper=1 in LIBERO format)
-
-2. **ACT eval**: `act_eval_runner.py` uses `get_curobo_models` which may require curobo;
-   verify before eval starts.
-
-3. **OpenVLA VRAM**: openvla-7b needs ~20GB VRAM; RTX 4090 (24GB) should be sufficient
-   but leaves little headroom if ACT also runs. Consider scheduling sequentially.
+1. ~~**π₀ state-dim mismatch**~~ → Fixed: `--state-dim 8` in eval_libero.sh
+2. ~~**ACT eval curobo dependency**~~ → Fixed: removed unused `get_curobo_models()` call
+3. ~~**ACT eval CUDA tensor**~~ → Fixed: `.cpu()` before passing actions to MuJoCo
+4. ~~**π₀ pyroki/jax version conflict**~~ → Fixed: removed unused `setup_ik_solver()` call
+5. ~~**π₀ action decode mismatch**~~ → Fixed: pi0_libero outputs 7-dim arm joints (not 9-dim)
