@@ -6,6 +6,7 @@ import argparse
 import matplotlib.pyplot as plt
 import yaml
 import json
+import wandb
 from copy import deepcopy
 from tqdm import tqdm
 from einops import rearrange
@@ -142,8 +143,17 @@ def train_bc(train_dataloader, val_dataloader, config):
     seed = config['seed']
     policy_class = config['policy_class']
     policy_config = config['policy_config']
+    task_name = config.get('task_name', 'unknown')
 
     set_seed(seed)
+
+    # Initialize wandb run
+    wandb.init(
+        project="RoboVerse_ACT",
+        name=os.path.basename(ckpt_dir),
+        config={**config, "policy_config": str(policy_config)},
+        resume="allow",
+    )
 
     policy = make_policy(policy_class, policy_config)
     policy.cuda()
@@ -207,6 +217,14 @@ def train_bc(train_dataloader, val_dataloader, config):
         epoch_train_loss =  epoch_train_summary['loss']
         print(f'Train loss: {epoch_train_loss:.5f}')
 
+        # Log to wandb
+        log_dict = {"train/loss": epoch_train_loss, "val/loss": epoch_val_loss, "epoch": epoch}
+        for k, v in epoch_train_summary.items():
+            log_dict[f"train/{k}"] = v.item()
+        for k, v in epoch_summary.items():
+            log_dict[f"val/{k}"] = v.item()
+        wandb.log(log_dict, step=epoch)
+
         summary_string = ''
         for k, v in epoch_train_summary.items():
             summary_string += f'{k}: {v.item():.3f} '
@@ -227,6 +245,8 @@ def train_bc(train_dataloader, val_dataloader, config):
 
     # save training curves
     plot_history(train_history, validation_history, num_epochs, ckpt_dir, seed)
+
+    wandb.finish()
 
     file_path = os.path.join("./roboverse_learn/il/act", "ckpt_dir_path.txt")
     with open(file_path, 'w') as f:
