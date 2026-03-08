@@ -30,9 +30,21 @@ tmux send-keys -t act_libero \
 ```
 
 Hyperparams: chunk_size=20, kl_weight=10, hidden_dim=512, dim_feedforward=3200, lr=1e-5, batch=8
-Eval: 99 episodes per task, max_steps=350, temporal_agg=True
 
-Checkpoint path: `info/outputs/ACT/{date}/{task}/checkpoints/policy_best.ckpt`
+**Output paths**:
+- Checkpoints: `info/outputs/ACT/{YYYY.MM.DD}/{HH.MM.SS}_{task}_obs:joint_pos_act:joint_pos_chunk20_99/`
+  - Best checkpoint: `policy_best.ckpt`
+  - Last checkpoint: `policy_last.ckpt`
+- Training log: `claude/log/act_libero.log` (batch) or `claude/log/act_train_{task}.log` (individual)
+
+**Eval**: 99 episodes per task, max_steps=800 (task timeout=250), temporal_agg=True
+```bash
+# Eval for 7 trained tasks (pass DIRECTORY to --ckpt_path, not file)
+bash /tmp/act_eval_libero.sh
+# Logs: claude/log/act_eval_{task}.log
+# Eval log (all tasks): claude/log/act_eval_all.log
+# Success rate written to: tmp/act/{task}/{ckpt_name}/success_rate.txt
+```
 
 ---
 
@@ -69,8 +81,9 @@ bash roboverse_learn/vla/pi0/start_server.sh
 ```bash
 # Terminal 2 — pass --state-dim 8 to truncate RoboVerse 9-dim → LIBERO 8-dim
 bash roboverse_learn/vla/pi0/eval_libero.sh
-# Logs: claude/log/pi0_{task}.log
-# Output: claude/out/pi0_eval/{task}/
+# Logs: claude/log/pi0_{task}.log  (e.g. claude/log/pi0_libero.pick_butter.log)
+# Output videos: claude/out/pi0_eval/{task}/episode_NNN.mp4
+# Final JSON report: claude/out/pi0_eval/{task}/pi_eval_{task}_{timestamp}.json
 ```
 
 > **Notes on pi0_libero compatibility**:
@@ -93,9 +106,10 @@ conda activate openvla
 ```bash
 conda activate openvla
 bash roboverse_learn/vla/OpenVLA/eval_libero.sh
-# Model auto-downloads from HuggingFace: openvla/openvla-7b (~15GB, first run only)
+# Model auto-downloads from HuggingFace: openvla/openvla-7b (~15GB, cached in ~/.cache/huggingface/)
 # Logs: claude/log/openvla_{task}.log
-# Output: claude/out/openvla_eval/{task}/
+# Output videos: claude/out/openvla_eval/{task}/episode_NNN.mp4
+# Final JSON report: claude/out/openvla_eval/{task}/
 ```
 
 Custom model path:
