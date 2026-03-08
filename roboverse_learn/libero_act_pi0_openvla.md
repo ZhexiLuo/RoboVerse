@@ -123,37 +123,40 @@ MODEL_PATH=openvla/openvla-7b bash roboverse_learn/vla/OpenVLA/eval_libero.sh
 
 ### ACT (trained, 100 epochs)
 
-| Task | Val Loss | Status | Success Rate |
-|------|----------|--------|-------------|
-| libero.pick_alphabet_soup | 0.280 (ep97) | 🔄 eval running | — |
-| libero.pick_bbq_sauce | 0.277 (ep91) | 🔄 eval running | — |
-| libero.pick_butter | 0.317 (ep82) | 🔄 eval running | — |
-| libero.pick_chocolate_pudding | 0.305 (ep93) | 🔄 eval running | — |
-| libero.pick_cream_cheese | 0.292 (ep88) | 🔄 eval running | — |
-| libero.pick_milk | 0.269 (ep93) | 🔄 eval running | — |
-| libero.orange_juice | 0.309 (ep90) | 🔄 eval running | — |
-| libero.pick_salad_dressing | — | 🔄 training | — |
-| libero.pick_tomato_sauce | — | 🔄 training | — |
+| Task | Val Loss | Status | Success Rate | Videos |
+|------|----------|--------|-------------|--------|
+| libero.pick_alphabet_soup | 0.280 (ep97) | ✅ eval done | **0.0%** | `tmp/act/libero.pick_alphabet_soup/` |
+| libero.pick_bbq_sauce | 0.277 (ep91) | ✅ eval done | **0.0%** | `tmp/act/libero.pick_bbq_sauce/` |
+| libero.pick_butter | 0.317 (ep82) | ✅ eval done | **0.0%** | `tmp/act/libero.pick_butter/` |
+| libero.pick_chocolate_pudding | 0.305 (ep93) | ✅ eval done | **0.0%** | `tmp/act/libero.pick_chocolate_pudding/` |
+| libero.pick_cream_cheese | 0.292 (ep88) | 🔄 eval running | — | — |
+| libero.pick_milk | 0.269 (ep93) | ⏳ eval queued | — | — |
+| libero.orange_juice | 0.309 (ep90) | ⏳ eval queued | — | — |
+| libero.pick_salad_dressing | — | 🔄 training | — | — |
+| libero.pick_tomato_sauce | — | 🔄 training | — | — |
+
+> Note: All timeout (max_steps=800, task timeout=250). 100 epochs insufficient — all episodes
+> end in timeout without success. Consider training 300-500 epochs for meaningful success rates.
 
 ### π₀ (zero-shot, pi0_libero checkpoint)
 
-| Task | Status | Success Rate |
-|------|--------|-------------|
-| libero.pick_alphabet_soup | 🔄 45/99 eps | — |
-| libero.pick_bbq_sauce | ⏳ queued | — |
-| libero.pick_butter | ⏳ queued | — |
-| libero.pick_chocolate_pudding | ⏳ queued | — |
-| libero.pick_cream_cheese | ⏳ queued | — |
-| libero.pick_milk | ⏳ queued | — |
-| libero.orange_juice | ⏳ queued | — |
-| libero.pick_salad_dressing | ⏳ queued | — |
-| libero.pick_tomato_sauce | ⏳ queued | — |
+| Task | Status | Success Rate | Output |
+|------|--------|-------------|--------|
+| libero.pick_alphabet_soup | ✅ done | **100.0%** (99/99) | `claude/out/pi0_eval/libero.pick_alphabet_soup/` |
+| libero.pick_bbq_sauce | 🔄 running (12/99) | — | — |
+| libero.pick_butter | ⏳ queued | — | — |
+| libero.pick_chocolate_pudding | ⏳ queued | — | — |
+| libero.pick_cream_cheese | ⏳ queued | — | — |
+| libero.pick_milk | ⏳ queued | — | — |
+| libero.orange_juice | ⏳ queued | — | — |
+| libero.pick_salad_dressing | ⏳ queued | — | — |
+| libero.pick_tomato_sauce | ⏳ queued | — | — |
 
 ### OpenVLA (zero-shot, openvla-7b)
 
 | Task | Status | Success Rate |
 |------|--------|-------------|
-| — | ⏳ model downloading (2/3 shards) | — |
+| — | ⏳ model downloading (2/3 shards, 14G/15G) | — |
 
 ---
 
