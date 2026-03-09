@@ -1,6 +1,6 @@
 # Libero-10 Multi-Policy Benchmark
 
-Goal: evaluate ACT (trained, 100 epochs) + π₀ (zero-shot) + OpenVLA (zero-shot) on 9 libero-10 tasks.
+Goal: evaluate ACT (trained, 300 epochs) + π₀ (zero-shot) + OpenVLA (zero-shot) on 9 libero-10 tasks.
 
 ## Task List (9 tasks, 99 demos each)
 
@@ -23,7 +23,7 @@ Goal: evaluate ACT (trained, 100 epochs) + π₀ (zero-shot) + OpenVLA (zero-sho
 ### ACT: Train
 
 ```bash
-# Train all 9 tasks (100 epochs each, ~18h total on RTX 4090)
+# Train all 9 tasks (300 epochs each)
 tmux new-session -d -s act_libero
 tmux send-keys -t act_libero \
   'bash roboverse_learn/il/act/act_run_libero.sh 0 2>&1 | tee claude/log/act_libero.log' Enter
@@ -33,47 +33,37 @@ Hyperparams: chunk_size=20, kl_weight=10, hidden_dim=512, dim_feedforward=3200, 
 
 **Checkpoint paths** (per task):
 ```
-info/outputs/ACT/2026.03.08/{HH.MM.SS}_{task}_obs:joint_pos_act:joint_pos_chunk20_99/
+info/outputs/ACT/2026.03.09/{HH.MM.SS}_{task}_obs:joint_pos_act:joint_pos_chunk20_99/
   policy_best.ckpt   # best val loss checkpoint
   policy_last.ckpt   # final epoch checkpoint
   cfg.yaml           # training config
   dataset_stats.pkl  # normalization stats
 ```
 
-**Training log**: `claude/log/act_libero.log`
-
-**Actual checkpoint dirs (2026-03-08 run)**:
+**Actual checkpoint dirs (2026-03-09, 300 epochs)**:
 | Task | Checkpoint Dir |
 |------|---------------|
-| libero.pick_alphabet_soup | `info/outputs/ACT/2026.03.08/22.21.08_libero.pick_alphabet_soup_obs:joint_pos_act:joint_pos_chunk20_99/` |
-| libero.pick_bbq_sauce | `info/outputs/ACT/2026.03.08/22.22.03_libero.pick_bbq_sauce_obs:joint_pos_act:joint_pos_chunk20_99/` |
-| libero.pick_butter | `info/outputs/ACT/2026.03.08/22.22.57_libero.pick_butter_obs:joint_pos_act:joint_pos_chunk20_99/` |
-| libero.pick_chocolate_pudding | `info/outputs/ACT/2026.03.08/22.23.53_libero.pick_chocolate_pudding_obs:joint_pos_act:joint_pos_chunk20_99/` |
-| libero.pick_cream_cheese | `info/outputs/ACT/2026.03.08/22.24.51_libero.pick_cream_cheese_obs:joint_pos_act:joint_pos_chunk20_99/` |
-| libero.pick_milk | `info/outputs/ACT/2026.03.08/22.25.48_libero.pick_milk_obs:joint_pos_act:joint_pos_chunk20_99/` |
-| libero.orange_juice | `info/outputs/ACT/2026.03.08/22.26.45_libero.orange_juice_obs:joint_pos_act:joint_pos_chunk20_99/` |
-| libero.pick_salad_dressing | `info/outputs/ACT/2026.03.08/23.09.24_libero.pick_salad_dressing_obs:joint_pos_act:joint_pos_chunk20_99/` |
-| libero.pick_tomato_sauce | `info/outputs/ACT/2026.03.08/23.10.22_libero.pick_tomato_sauce_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.pick_alphabet_soup | `info/outputs/ACT/2026.03.09/03.22.10_libero.pick_alphabet_soup_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.pick_bbq_sauce | `info/outputs/ACT/2026.03.09/03.31.46_libero.pick_bbq_sauce_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.pick_butter | `info/outputs/ACT/2026.03.09/03.38.58_libero.pick_butter_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.pick_chocolate_pudding | `info/outputs/ACT/2026.03.09/03.42.08_libero.pick_chocolate_pudding_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.pick_cream_cheese | `info/outputs/ACT/2026.03.09/03.45.13_libero.pick_cream_cheese_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.pick_milk | `info/outputs/ACT/2026.03.09/03.48.24_libero.pick_milk_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.orange_juice | `info/outputs/ACT/2026.03.09/03.51.40_libero.orange_juice_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.pick_salad_dressing | `info/outputs/ACT/2026.03.09/03.54.56_libero.pick_salad_dressing_obs:joint_pos_act:joint_pos_chunk20_99/` |
+| libero.pick_tomato_sauce | `info/outputs/ACT/2026.03.09/03.58.08_libero.pick_tomato_sauce_obs:joint_pos_act:joint_pos_chunk20_99/` |
 
 ### ACT: Eval
 
 ```bash
-# Eval single task — pass DIRECTORY to --ckpt_path (runner appends policy_best.ckpt)
-CKPT_DIR="info/outputs/ACT/2026.03.08/22.21.08_libero.pick_alphabet_soup_obs:joint_pos_act:joint_pos_chunk20_99"
-MUJOCO_GL=egl CUDA_VISIBLE_DEVICES=0 \
-.venv311/bin/python -m roboverse_learn.il.act.act_eval_runner \
-  --task libero.pick_alphabet_soup \
-  --robot franka --num_envs 1 --sim mujoco \
-  --algo act --ckpt_path ./${CKPT_DIR} \
-  --headless True --num_eval 99 \
-  --temporal_agg True --chunk_size 20 \
-  2>&1 | tee claude/log/act_eval_libero.pick_alphabet_soup.log
+# Eval all 9 tasks (20 evals each) — uses fixed joint order + correct camera
+bash roboverse_learn/il/act/eval_all_fixed.sh
 ```
 
 **Eval output paths**:
 - Videos: `tmp/act/{task}/{ckpt_name}/{episode_idx}.mp4`
 - Success rate: `tmp/act/{task}/{ckpt_name}/success_rate.txt`
-- Logs: `claude/log/act_eval_{task}.log`
+- Logs: `claude/log/act_eval_fixed_{task}.log`
 
 ---
 
@@ -131,7 +121,6 @@ conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero.sh
 
 **Run eval**:
 ```bash
-# Recommended: use conda run (avoids conda init issues in tmux/scripts)
 tmux new-session -d -s openvla_eval
 tmux send-keys -t openvla_eval \
   'conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero.sh 0 2>&1 | tee claude/log/openvla_eval_all.log' Enter
@@ -149,29 +138,31 @@ tmux send-keys -t openvla_eval \
 
 ## Eval Results
 
-### ACT (trained, 100 epochs, wandb: RoboVerse_ACT)
+### ACT (trained, 300 epochs, wandb: RoboVerse_ACT)
 
-| Task | Best Val Loss | Eval Status | Success Rate | Videos |
-|------|--------------|-------------|-------------|--------|
-| libero.pick_alphabet_soup | 0.280 (ep97) | ✅ done (99/99) | **0.0%** | `tmp/act/libero.pick_alphabet_soup/22.21.08_.../` |
-| libero.pick_bbq_sauce | 0.277 (ep91) | ✅ done (99/99) | **0.0%** | `tmp/act/libero.pick_bbq_sauce/22.22.03_.../` |
-| libero.pick_butter | 0.317 (ep82) | ✅ done (99/99) | **0.0%** | `tmp/act/libero.pick_butter/22.22.57_.../` |
-| libero.pick_chocolate_pudding | 0.305 (ep93) | ✅ done (99/99) | **0.0%** | `tmp/act/libero.pick_chocolate_pudding/22.23.53_.../` |
-| libero.pick_cream_cheese | 0.292 (ep88) | ✅ done (99/99) | **0.0%** | `tmp/act/libero.pick_cream_cheese/22.24.51_.../` |
-| libero.pick_milk | 0.269 (ep93) | ⏳ stopped at 51/99 | — | — |
-| libero.orange_juice | 0.309 (ep90) | ⏳ not started | — | — |
-| libero.pick_salad_dressing | 0.301 (ep93) | ⏳ not started | — | — |
-| libero.pick_tomato_sauce | 0.331 (ep93) | ⏳ not started | — | — |
+Eval: 20 demos each, with fixed joint order + correct camera pos `(1.0, 0, 0.75)`.
 
-> ⚠️ **100 epochs insufficient**: All completed tasks time out (max_steps=800, task timeout=250 steps). Policy does not converge to meaningful behavior at 100 epochs. **Recommend 300–500 epochs** for non-trivial success rates.
+| Task | Best Val Loss | Eval (20x) | Success Rate |
+|------|--------------|------------|-------------|
+| libero.pick_alphabet_soup | 0.166 (ep292) | ✅ done | **0%** |
+| libero.pick_bbq_sauce | 0.185 (ep278) | ✅ done | **0%** |
+| libero.pick_butter | 0.179 (ep292) | ✅ done | **100%** ✅ |
+| libero.pick_chocolate_pudding | 0.185 (ep292) | ✅ done | **0%** |
+| libero.pick_cream_cheese | 0.209 (ep210) | ✅ done | **100%** ✅ |
+| libero.pick_milk | ~0.210 | ✅ done | **0%** |
+| libero.orange_juice | ~0.190 | ✅ done | **0%** |
+| libero.pick_salad_dressing | 0.182 (ep276) | ✅ done | **100%** ✅ |
+| libero.pick_tomato_sauce | ~0.300 | ✅ done | **100%** ✅ |
+
+> 4/9 tasks achieve 100% SR, 5/9 tasks still 0%. May need more epochs or hyperparameter tuning for the 0% tasks.
 
 ### π₀ (zero-shot, pi0_libero checkpoint)
 
 | Task | Eval Status | Success Rate | Output Dir |
 |------|------------|-------------|-----------|
-| libero.pick_alphabet_soup | ✅ done (99/99) | **100.0%** | `claude/out/pi0_eval/libero.pick_alphabet_soup/` |
-| libero.pick_bbq_sauce | ✅ done (99/99) | **100.0%** | `claude/out/pi0_eval/libero.pick_bbq_sauce/` |
-| libero.pick_butter | ⏳ stopped at 2/99 | — | — |
+| libero.pick_alphabet_soup | ✅ done (99/99) | **100%** | `claude/out/pi0_eval/libero.pick_alphabet_soup/` |
+| libero.pick_bbq_sauce | ✅ done (99/99) | **100%** | `claude/out/pi0_eval/libero.pick_bbq_sauce/` |
+| libero.pick_butter | ⏳ not started | — | — |
 | libero.pick_chocolate_pudding | ⏳ not started | — | — |
 | libero.pick_cream_cheese | ⏳ not started | — | — |
 | libero.pick_milk | ⏳ not started | — | — |
@@ -185,7 +176,7 @@ tmux send-keys -t openvla_eval \
 |------|------------|-------------|
 | (all tasks) | ⏳ not started — EGL init issue in conda env | — |
 
-> **Note**: OpenVLA eval has EGL rendering issue when run via `conda run` in the openvla env. Need to investigate `MUJOCO_GL` or EGL device config for that conda env.
+> **Note**: OpenVLA eval has EGL rendering issue when run via `conda run` in the openvla env. Need to investigate `MUJOCO_GL` or EGL device config.
 
 ---
 
@@ -193,52 +184,29 @@ tmux send-keys -t openvla_eval \
 
 ### ✅ Done
 - [x] zarr data ready for all 9 tasks (99 demos each)
-- [x] ACT training completed for all 9 tasks (100 epochs, wandb logged)
-- [x] ACT eval completed for 5/9 tasks (alphabet_soup, bbq_sauce, butter, chocolate_pudding, cream_cheese) → all 0%
-- [x] Videos generated: `tmp/act/{task}/*/` (99 videos per task, 5 tasks)
+- [x] ACT training completed for all 9 tasks (**300 epochs**, wandb: RoboVerse_ACT)
+- [x] ACT eval completed for all 9/9 tasks (20 evals each, fixed bugs)
 - [x] π₀ server running (`pi0_libero` config, port 8000)
-- [x] π₀ eval completed for 2/9 tasks → both 100%!
+- [x] π₀ eval completed for 2/9 tasks → both 100%
 - [x] OpenVLA model downloaded (openvla-7b, ~15GB cached)
 
-### 🔧 TODO: Resume Evals
+### 🔧 TODO
+1. **π₀ eval** — resume for remaining 7 tasks:
+   ```bash
+   bash roboverse_learn/vla/pi0/start_server.sh   # start server first
+   bash roboverse_learn/vla/pi0/eval_libero.sh    # eval all 9 tasks
+   ```
 
-**ACT** — resume eval for 4 remaining tasks:
-```bash
-# Run from RoboVerse root, sequentially (reuse existing tmux act_eval)
-for task_info in \
-  "libero.pick_milk:22.25.48_libero.pick_milk_obs:joint_pos_act:joint_pos_chunk20_99" \
-  "libero.orange_juice:22.26.45_libero.orange_juice_obs:joint_pos_act:joint_pos_chunk20_99" \
-  "libero.pick_salad_dressing:23.09.24_libero.pick_salad_dressing_obs:joint_pos_act:joint_pos_chunk20_99" \
-  "libero.pick_tomato_sauce:23.10.22_libero.pick_tomato_sauce_obs:joint_pos_act:joint_pos_chunk20_99"; do
-  task="${task_info%%:*}"
-  ckpt="info/outputs/ACT/2026.03.08/${task_info##*:}"
-  MUJOCO_GL=egl CUDA_VISIBLE_DEVICES=0 \
-  .venv311/bin/python -m roboverse_learn.il.act.act_eval_runner \
-    --task ${task} --robot franka --num_envs 1 --sim mujoco \
-    --algo act --ckpt_path ./${ckpt} \
-    --headless True --num_eval 99 --temporal_agg True --chunk_size 20 \
-    2>&1 | tee claude/log/act_eval_${task}.log
-done
-```
+2. **OpenVLA eval** — fix EGL issue then run:
+   ```bash
+   # Option A: set MUJOCO_GL=osmesa
+   # Option B: install EGL support in openvla conda env
+   conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero.sh 0
+   ```
 
-**π₀** — resume eval for 7 remaining tasks:
-```bash
-# Server must be running: bash roboverse_learn/vla/pi0/start_server.sh
-bash roboverse_learn/vla/pi0/eval_libero.sh
-# (script loops all 9 tasks; tasks with existing JSON will be skipped if modified)
-```
-
-**OpenVLA** — fix EGL issue then run:
-```bash
-# Investigate: conda run -n openvla python -c "import mujoco; print(mujoco.__version__)"
-# Option A: set MUJOCO_GL=osmesa if EGL not available in openvla env
-# Option B: install mujoco EGL support in openvla conda env
-conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero.sh 0 2>&1 | tee claude/log/openvla_eval_all.log
-```
-
-### 🔮 Future: ACT Longer Training
-- 100 epochs → 0% success rate (timeout). Recommend 300–500 epochs.
-- Retrain with `--num_epochs 300` and re-eval.
+3. **ACT 0% tasks** — investigate why 5 tasks still fail at 300 epochs:
+   - Candidates: pick_alphabet_soup, pick_bbq_sauce, pick_chocolate_pudding, pick_milk, orange_juice
+   - Options: more epochs (500+), tune lr/chunk_size, check demo quality
 
 ---
 
@@ -247,13 +215,15 @@ conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero.sh 0 2>&1 | te
 | Date | Event |
 |------|-------|
 | 2026-03-08 | zarr data ready for all 9 tasks |
-| 2026-03-08 | ACT infra verified (zarr v3 fix, 1-epoch dry run) |
-| 2026-03-08 | ACT training completed for 9/9 tasks (100 epochs each, wandb: RoboVerse_ACT) |
-| 2026-03-08 | ACT eval done for 5/9 tasks — all 0% (100 epochs insufficient) |
-| 2026-03-08 | Videos generated: `tmp/act/` (5 tasks × 99 episodes) |
-| 2026-03-08 | openpi installed, pi0_libero downloaded (9.8GB) |
-| 2026-03-08 | π₀ eval running — alphabet_soup 100%, bbq_sauce 100% |
-| 2026-03-08 | OpenVLA model downloaded (openvla-7b, 15GB), EGL issue blocking eval |
+| 2026-03-08 | ACT infra verified (zarr v3 fix, eval curobo fix) |
+| 2026-03-08 | ACT training completed for 9/9 tasks (100 epochs, wandb: RoboVerse_ACT) |
+| 2026-03-08 | ACT eval (100ep) — all 0%, camera bug + joint order bug found |
+| 2026-03-08 | π₀ eval: alphabet_soup 100%, bbq_sauce 100% |
+| 2026-03-08 | OpenVLA model downloaded, EGL issue blocking eval |
+| 2026-03-09 | ACT retrained 300 epochs for all 9 tasks (wandb: RoboVerse_ACT) |
+| 2026-03-09 | Bug fix: joint order double-reindex (commit c80b4fc8) |
+| 2026-03-09 | Bug fix: camera pos mismatch (1.5,0,1.5)→(1.0,0,0.75) (commit f0477c94) |
+| 2026-03-09 | ACT eval (300ep, fixed) — 4/9 tasks 100%, 5/9 tasks 0% |
 
 ---
 
@@ -266,8 +236,10 @@ conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero.sh 0 2>&1 | te
 5. ~~**π₀ action decode mismatch**~~ → Fixed: pi0_libero outputs 7-dim arm joints (not 9-dim)
 6. ~~**ACT zarr empty (salad/tomato)**~~ → Fixed: re-ran data2zarr_dp.py; all 9 tasks now have 99 demos
 7. ~~**numpy 2.x conflict in .venv311**~~ → Fixed: downgraded to numpy==1.26.4
+8. ~~**ACT joint order double-reindex**~~ → Fixed (commit c80b4fc8): zip action directly with `sorted(joint_names)`
+9. ~~**ACT camera pos mismatch**~~ → Fixed (commit f0477c94): eval now uses `(1.0, 0, 0.75)` matching demo collection
 
 ## Known Issues (active)
 
-1. **OpenVLA EGL error** (`EGL_NOT_INITIALIZED`) when running `conda run -n openvla`. The openvla conda env may lack EGL libraries or needs `MUJOCO_GL=osmesa` fallback.
-2. **ACT 0% success rate** — 100 epochs insufficient for joint_pos policy to learn picking behavior. Need 300–500 epochs.
+1. **OpenVLA EGL error** — `conda run -n openvla` triggers `EGL_NOT_INITIALIZED`. Try `MUJOCO_GL=osmesa`.
+2. **ACT 5/9 tasks 0% SR** — pick_alphabet_soup, pick_bbq_sauce, pick_chocolate_pudding, pick_milk, orange_juice still fail at 300 epochs. Root cause unclear.

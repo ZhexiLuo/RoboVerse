@@ -1,7 +1,8 @@
 #!/bin/bash
 # Batch OpenVLA zero-shot eval on 9 libero-10 tasks
-# Usage: conda activate openvla && bash roboverse_learn/vla/OpenVLA/eval_libero.sh [gpu_id]
+# Usage: conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero.sh [gpu_id]
 # Note: Run from RoboVerse project root
+# Note: Use MUJOCO_GL=osmesa (not egl) when running inside conda run
 
 gpu_id=${1:-0}
 model_path="${MODEL_PATH:-openvla/openvla-7b}"
@@ -26,7 +27,7 @@ for task in "${task_names[@]}"; do
   echo "🤖 OpenVLA eval: ${task}"
   echo "========================================"
 
-  MUJOCO_GL=egl CUDA_VISIBLE_DEVICES=${gpu_id} \
+  MUJOCO_GL=osmesa CUDA_VISIBLE_DEVICES=${gpu_id} \
   python roboverse_learn/vla/OpenVLA/vla_eval.py \
     --model_path ${model_path} \
     --task ${task} \

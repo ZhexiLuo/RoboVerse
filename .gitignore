@@ -113,3 +113,9 @@ id_rsa*
 
 # Claude Code
 .claude/
+
+# ACT temporary files
+roboverse_learn/il/act/ckpt_dir_path.txt
+roboverse_learn/il/act/eval_all_300ep.sh
+roboverse_learn/il/act/eval_batch2.sh
+roboverse_learn/il/act/eval_single.sh
