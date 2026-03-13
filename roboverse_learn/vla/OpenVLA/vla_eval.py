@@ -72,9 +72,6 @@ class OpenVLARunner:
         self.policy_cfg = VLAPolicyCfg()
         self.policy_cfg.obs_config.obs_type = "no_proprio"
 
-        stats_path = os.path.join(self.model_path, "dataset_statistics.json")
-        self.DATA_STAT = json.load(open(stats_path)) if os.path.exists(stats_path) else {}
-
         self.processor = AutoProcessor.from_pretrained(self.model_path, trust_remote_code=True)
         self.model = AutoModelForVision2Seq.from_pretrained(
             self.model_path,
@@ -84,8 +81,10 @@ class OpenVLARunner:
             attn_implementation="flash_attention_2",
         ).to(self.device).eval()
 
-        # Important: give norm stats to the model; unnorm_key used in predict_action
-        self.model.norm_stats = self.DATA_STAT
+        # norm_stats embedded in config.json; only override from local file if it exists
+        stats_path = os.path.join(self.model_path, "dataset_statistics.json")
+        if os.path.exists(stats_path):
+            self.model.norm_stats = json.load(open(stats_path))
 
         self.obs = deque(maxlen=2)
 

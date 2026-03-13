@@ -119,3 +119,9 @@ roboverse_learn/il/act/ckpt_dir_path.txt
 roboverse_learn/il/act/eval_all_300ep.sh
 roboverse_learn/il/act/eval_batch2.sh
 roboverse_learn/il/act/eval_single.sh
+roboverse_learn/il/dp/CLAUDE.md
+
+# rescale task assets (large binary mesh files)
+metasim/cfg/tasks/rescale/
+roboverse_pack/tasks/rescale/
+roboverse_pack/tasks/gpt/
