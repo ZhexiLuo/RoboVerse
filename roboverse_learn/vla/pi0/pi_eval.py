@@ -153,7 +153,6 @@ class PiPolicyRunner:
         return actions
 
 
-
     def _request_action_chunk(self, policy_obs: Dict[str, Any]) -> None:
         response = self.client.infer(policy_obs)
         chunk = np.asarray(response["actions"], dtype=np.float32)

@@ -121,6 +121,9 @@ roboverse_learn/il/act/eval_batch2.sh
 roboverse_learn/il/act/eval_single.sh
 roboverse_learn/il/dp/CLAUDE.md
 
+# RLDS demo symlinks (local data, not tracked)
+roboverse_learn/vla/rlds_utils/roboverse/demo/
+
 # rescale task assets (large binary mesh files)
 metasim/cfg/tasks/rescale/
 roboverse_pack/tasks/rescale/

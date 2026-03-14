@@ -5,8 +5,6 @@ import imageio.v2 as iio
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import tensorflow_hub as hub
-
 tfds.core.utils.gcs_utils._is_gcs_disabled = True
 os.environ["NO_GCE_CHECK"] = "true"
 
@@ -19,8 +17,8 @@ class BridgeOrig(tfds.core.GeneratorBasedBuilder):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # sentence embed model
-        self._embed = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")
+        # Skip TF Hub sentence encoder - OpenVLA finetune uses language_instruction text directly
+        self._embed = None
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Dataset metadata (features)."""
@@ -170,7 +168,7 @@ class BridgeOrig(tfds.core.GeneratorBasedBuilder):
                 return None
 
             # compute language embedding once
-            lang_emb = self._embed([task_desc])[0].numpy() if task_desc else np.zeros((512,), dtype=np.float32)
+            lang_emb = np.zeros((512,), dtype=np.float32)  # skip TF Hub; OpenVLA uses text instruction directly
 
             steps = []
             for t in range(T_rgb):

@@ -158,25 +158,61 @@ Eval: 20 demos each, with fixed joint order + correct camera pos `(1.0, 0, 0.75)
 
 ### π₀ (zero-shot, pi0_libero checkpoint)
 
-| Task | Eval Status | Success Rate | Output Dir |
-|------|------------|-------------|-----------|
-| libero.pick_alphabet_soup | ✅ done (99/99) | **100%** | `claude/out/pi0_eval/libero.pick_alphabet_soup/` |
-| libero.pick_bbq_sauce | ✅ done (99/99) | **100%** | `claude/out/pi0_eval/libero.pick_bbq_sauce/` |
-| libero.pick_butter | ⏳ not started | — | — |
-| libero.pick_chocolate_pudding | ⏳ not started | — | — |
-| libero.pick_cream_cheese | ⏳ not started | — | — |
-| libero.pick_milk | ⏳ not started | — | — |
-| libero.orange_juice | ⏳ not started | — | — |
-| libero.pick_salad_dressing | ⏳ not started | — | — |
-| libero.pick_tomato_sauce | ⏳ not started | — | — |
+**⚠️ 重要 Bug 修复记录 (2026-03-10)**:
+- Bug 1: SR 计算错误 — `truncated`（超时）被误算为成功
+- Bug 2: state 格式错误 — 发送 joint_pos 而非 world-frame EE 位姿（xyz+axis_angle+gripper=8dim）
+- Bug 3: action 解码错误 — `extra_delta_transform=True` + `AbsoluteActions` 后输出是绝对 EE 目标（非 delta）
+- Bug 4: IK target 坐标系错误 — world-frame 目标需转换到 robot local frame 再 IK
+- Bug 5: pyroki 在 .venv311 中 JAX 冲突 → 改用 openvla conda env（JAX 0.6.2 + numpy 1.26.4 兼容）
+
+**Eval cmd (修复后)**:
+```bash
+bash roboverse_learn/vla/pi0/start_server.sh        # tmux pi0_server
+conda run -n openvla bash roboverse_learn/vla/pi0/eval_libero_ik.sh  # tmux pi0_eval
+```
+
+**结果 (2026-03-10, 10 episodes each, pi0_libero zero-shot)**:
+
+| Task | SR | Output Dir |
+|------|-----|-----------|
+| libero.pick_alphabet_soup | **0/10 (0%)** | `claude/out/pi0_eval/libero.pick_alphabet_soup/` |
+| libero.pick_bbq_sauce | **0/10 (0%)** | `claude/out/pi0_eval/libero.pick_bbq_sauce/` |
+| libero.pick_butter | **0/10 (0%)** | `claude/out/pi0_eval/libero.pick_butter/` |
+| libero.pick_chocolate_pudding | **0/10 (0%)** | `claude/out/pi0_eval/libero.pick_chocolate_pudding/` |
+| libero.pick_cream_cheese | **0/10 (0%)** | `claude/out/pi0_eval/libero.pick_cream_cheese/` |
+| libero.pick_milk | **0/10 (0%)** | `claude/out/pi0_eval/libero.pick_milk/` |
+| libero.orange_juice | **0/10 (0%)** | `claude/out/pi0_eval/libero.orange_juice/` |
+| libero.pick_salad_dressing | **0/10 (0%)** | `claude/out/pi0_eval/libero.pick_salad_dressing/` |
+| libero.pick_tomato_sauce | **0/10 (0%)** | `claude/out/pi0_eval/libero.pick_tomato_sauce/` |
+
+> SR=0% 可能原因：①RoboVerse 场景与 LIBERO 原版存在差异（桌面布局/相机视角），②pi0_libero 为 zero-shot，未经 RoboVerse 数据微调
 
 ### OpenVLA (zero-shot, openvla-7b)
 
-| Task | Eval Status | Success Rate |
-|------|------------|-------------|
-| (all tasks) | ⏳ not started — EGL init issue in conda env | — |
+**Bug 修复 (2026-03-10)**: `model.norm_stats` 被空字典覆盖 → 保留模型内置 norm_stats（在 config.json 中）
 
-> **Note**: OpenVLA eval has EGL rendering issue when run via `conda run` in the openvla env. Need to investigate `MUJOCO_GL` or EGL device config.
+**Eval cmd**:
+```bash
+# 注意：需先停止 pi0 server 释放 GPU（OpenVLA 需要 ~15GB）
+conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero_10ep.sh 0 \
+  2>&1 | tee claude/log/openvla_eval_v2.log
+```
+
+**结果 (2026-03-13, 10 episodes each, openvla-7b zero-shot)**:
+
+| Task | SR | Output Dir |
+|------|-----|-----------|
+| libero.pick_alphabet_soup | **0/10 (0%)** | `claude/out/openvla_eval/libero.pick_alphabet_soup/` |
+| libero.pick_bbq_sauce | **0/10 (0%)** | `claude/out/openvla_eval/libero.pick_bbq_sauce/` |
+| libero.pick_butter | **0/10 (0%)** | `claude/out/openvla_eval/libero.pick_butter/` |
+| libero.pick_chocolate_pudding | **0/10 (0%)** | `claude/out/openvla_eval/libero.pick_chocolate_pudding/` |
+| libero.pick_cream_cheese | **0/10 (0%)** | `claude/out/openvla_eval/libero.pick_cream_cheese/` |
+| libero.pick_milk | **0/10 (0%)** | `claude/out/openvla_eval/libero.pick_milk/` |
+| libero.orange_juice | **0/10 (0%)** | `claude/out/openvla_eval/libero.orange_juice/` |
+| libero.pick_salad_dressing | **0/10 (0%)** | `claude/out/openvla_eval/libero.pick_salad_dressing/` |
+| libero.pick_tomato_sauce | **0/10 (0%)** | `claude/out/openvla_eval/libero.pick_tomato_sauce/` |
+
+> SR=0% 原因：① openvla-7b 为 zero-shot，未见 RoboVerse 数据；② 所有 episode 均达 250 步超时（任务 max），机器人有运动但未完成抓放；③ RoboVerse 场景布局与 LIBERO 原版训练数据存在差异
 
 ---
 
@@ -184,29 +220,21 @@ Eval: 20 demos each, with fixed joint order + correct camera pos `(1.0, 0, 0.75)
 
 ### ✅ Done
 - [x] zarr data ready for all 9 tasks (99 demos each)
-- [x] ACT training completed for all 9 tasks (**300 epochs**, wandb: RoboVerse_ACT)
-- [x] ACT eval completed for all 9/9 tasks (20 evals each, fixed bugs)
-- [x] π₀ server running (`pi0_libero` config, port 8000)
-- [x] π₀ eval completed for 2/9 tasks → both 100%
+- [x] ACT training completed for all 9 tasks (300 epochs, wandb: RoboVerse_ACT)
+- [x] ACT eval completed for all 9/9 tasks (20 evals each) — 4/9 tasks 100% SR
+- [x] π₀ eval completed for all 9/9 tasks (10 evals each, 2026-03-10) — all 0% (zero-shot)
 - [x] OpenVLA model downloaded (openvla-7b, ~15GB cached)
+- [x] OpenVLA eval completed for all 9/9 tasks (2026-03-13) — all 0% (zero-shot)
 
 ### 🔧 TODO
-1. **π₀ eval** — resume for remaining 7 tasks:
-   ```bash
-   bash roboverse_learn/vla/pi0/start_server.sh   # start server first
-   bash roboverse_learn/vla/pi0/eval_libero.sh    # eval all 9 tasks
-   ```
+1. **ACT 0% tasks** — 5/9 tasks (pick_alphabet_soup, pick_bbq_sauce, pick_chocolate_pudding, pick_milk, orange_juice) 仍 0%，可尝试：
+   - 更多 epoch (500+)
+   - 调整 lr/chunk_size
+   - 检查 demo 质量
 
-2. **OpenVLA eval** — fix EGL issue then run:
-   ```bash
-   # Option A: set MUJOCO_GL=osmesa
-   # Option B: install EGL support in openvla conda env
-   conda run -n openvla bash roboverse_learn/vla/OpenVLA/eval_libero.sh 0
-   ```
+2. **π₀ SR=0% 分析** — 所有 episode 均为 250 步超时，机器人动作输出但无法完成抓放。需要微调 pi0_libero checkpoint 或分析 IK 执行轨迹视频。
 
-3. **ACT 0% tasks** — investigate why 5 tasks still fail at 300 epochs:
-   - Candidates: pick_alphabet_soup, pick_bbq_sauce, pick_chocolate_pudding, pick_milk, orange_juice
-   - Options: more epochs (500+), tune lr/chunk_size, check demo quality
+3. **OpenVLA SR=0% 分析** — 所有 episode 均为 250 步超时。openvla-7b 为 zero-shot，场景差异导致泛化失败。需要微调或使用 LIBERO action space fine-tuned 版本。
 
 ---
 
@@ -224,6 +252,10 @@ Eval: 20 demos each, with fixed joint order + correct camera pos `(1.0, 0, 0.75)
 | 2026-03-09 | Bug fix: joint order double-reindex (commit c80b4fc8) |
 | 2026-03-09 | Bug fix: camera pos mismatch (1.5,0,1.5)→(1.0,0,0.75) (commit f0477c94) |
 | 2026-03-09 | ACT eval (300ep, fixed) — 4/9 tasks 100%, 5/9 tasks 0% |
+| 2026-03-10 | π₀ 5 bugs fixed (SR calc, state format, action decode, IK frame, jax conflict) |
+| 2026-03-10 | π₀ eval completed for all 9/9 tasks — all 0% (zero-shot, scene mismatch) |
+| 2026-03-10 | OpenVLA norm_stats bug fixed (commit e7df0332) |
+| 2026-03-13 | OpenVLA eval completed for all 9/9 tasks — all 0% (zero-shot, scene mismatch) |
 
 ---
 
@@ -238,8 +270,11 @@ Eval: 20 demos each, with fixed joint order + correct camera pos `(1.0, 0, 0.75)
 7. ~~**numpy 2.x conflict in .venv311**~~ → Fixed: downgraded to numpy==1.26.4
 8. ~~**ACT joint order double-reindex**~~ → Fixed (commit c80b4fc8): zip action directly with `sorted(joint_names)`
 9. ~~**ACT camera pos mismatch**~~ → Fixed (commit f0477c94): eval now uses `(1.0, 0, 0.75)` matching demo collection
+10. ~~**OpenVLA norm_stats overwritten**~~ → Fixed (commit e7df0332): keep model's built-in norm_stats
+11. ~~**OpenVLA CUDA OOM (pi0 server running)**~~ → Fixed: stop pi0 server before running OpenVLA eval
 
 ## Known Issues (active)
 
-1. **OpenVLA EGL error** — `conda run -n openvla` triggers `EGL_NOT_INITIALIZED`. Try `MUJOCO_GL=osmesa`.
-2. **ACT 5/9 tasks 0% SR** — pick_alphabet_soup, pick_bbq_sauce, pick_chocolate_pudding, pick_milk, orange_juice still fail at 300 epochs. Root cause unclear.
+1. **π₀ SR=0%** — zero-shot pi0_libero; all episodes timeout at 250 steps. Root cause: scene/camera domain gap between RoboVerse and original LIBERO training data. Requires fine-tuning.
+2. **OpenVLA SR=0%** — zero-shot openvla-7b; all episodes timeout at 250 steps. Same domain gap issue. Requires fine-tuning on RoboVerse LIBERO data.
+3. **ACT 5/9 tasks 0% SR** — pick_alphabet_soup, pick_bbq_sauce, pick_chocolate_pudding, pick_milk, orange_juice still fail at 300 epochs. Root cause unclear (may need 500+ epochs or hyperparameter tuning).
