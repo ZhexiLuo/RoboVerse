@@ -1,27 +1,82 @@
 # RoboVerse Learn — IL / VLA Pipeline
 
-Full pipeline for imitation learning and VLA evaluation on Libero-10 benchmark with MuJoCo.
+Full pipeline for imitation learning and VLA fine-tuning/evaluation on Libero-10 benchmark with MuJoCo.
 
 ---
 
-## Environment
+## Quick Start (New Server)
+
+```
+git clone https://github.com/ZhexiLuo/RoboVerse.git
+cd RoboVerse
+```
+
+Then follow the setup steps below in order.
+
+---
+
+## Dependencies Overview
+
+| Component | Size | Transfer Method |
+|-----------|------|----------------|
+| Code (git) | ~500MB | `git clone` ✅ |
+| Demo data (`roboverse_demo/`) | **2.2GB** | `rsync` (see §Data) |
+| Zarr training data (`data_policy/`) | **7.3GB** | regenerate from demos, or `rsync` |
+| ACT/DP checkpoints (`info/outputs/`) | **37GB** | regenerate by training, or `rsync` |
+| π₀.₅ base weights | **7.3GB** | auto-download via openpi (see §π₀) |
+| OpenVLA base model | **15GB** | auto-download from HuggingFace (see §OpenVLA) |
+| LeRobot dataset (`~/.cache/huggingface/lerobot/`) | ~2GB | regenerate from demos |
+
+> ⚠️ `roboverse_demo/`, `data_policy/`, `info/` are in `.gitignore` — transfer via `rsync` or regenerate.
+
+---
+
+## Environments
 
 | Env | Python | Used for |
 |-----|--------|---------|
-| `.venv311` | 3.11 | DP, ACT, π₀ server |
-| `openvla` (conda) | 3.10 | OpenVLA eval, π₀ eval (has pyroki + jax) |
+| `.venv311` | 3.11 | DP, ACT, π₀ eval client |
+| `openvla` (conda) | 3.10 | OpenVLA fine-tune + eval, π₀ eval (has pyroki + jax) |
+
+> ⚠️ MuJoCo headless rendering: use `MUJOCO_GL=egl` (server) or `MUJOCO_GL=osmesa` (conda run).
+
+### Setup: `.venv311`
 
 ```bash
-# .venv311
-source /home/zhexi/project/RoboVerse/.venv311/bin/activate
+# Create Python 3.11 venv
+python3.11 -m venv .venv311
+source .venv311/bin/activate
 
-# openvla conda env
-conda activate openvla
-# Or in tmux (non-login shell):
-conda run -n openvla <command>
+# Install RoboVerse with MuJoCo extras
+pip install -e ".[mujoco]"
+
+# Install ACT dependency
+pip install -e roboverse_learn/il/utils/act/detr/
+
+# Install π₀ eval client
+pip install openpi_client
+
+# Full reproducible dependencies (352 packages):
+pip install -r roboverse_learn/vla/requirements_venv311.txt
 ```
 
-> ⚠️ MuJoCo headless rendering requires `MUJOCO_GL=egl` (server) or `MUJOCO_GL=osmesa` (conda run).
+> 📋 Full freeze: `roboverse_learn/vla/requirements_venv311.txt`
+
+### Setup: `openvla` conda env
+
+```bash
+# One-time setup (creates rlds_env + openvla conda envs)
+bash roboverse_learn/vla/OpenVLA/setup_env.sh
+
+# Install additional dependencies
+conda activate openvla
+pip install -r roboverse_learn/vla/OpenVLA/requirements_openvla.txt
+
+# Install openpi client
+pip install openpi_client
+```
+
+> 📋 Full freeze: `roboverse_learn/vla/OpenVLA/requirements_openvla.txt`
 
 ---
 
@@ -39,23 +94,32 @@ libero.pick_tomato_sauce
 
 ---
 
-## Step 1 — Collect Demonstrations
+## Data: Demo Collection
 
 > ⚠️ Libero must use `--sim=mujoco`. Trajectory files were recorded in MuJoCo; cross-simulator replay fails.
 
-**Single task:**
+### Option A — Transfer existing demos via rsync (recommended)
 
 ```bash
+# From old server → new server
+rsync -avz --progress \
+  <old-server>:/path/to/RoboVerse/roboverse_demo/ \
+  ./roboverse_demo/
+```
+
+Total size: **2.2GB** (9 tasks × ~250MB)
+
+### Option B — Re-collect from scratch
+
+```bash
+# Single task
 MUJOCO_GL=egl python scripts/advanced/collect_demo.py \
   --sim=mujoco --task=libero.pick_alphabet_soup \
   --num_envs=1 --headless \
   --num_demo_success=100 --cust_name=v1 \
   2>&1 | tee claude/log/collect_alphabet_soup.log
-```
 
-**Batch (all libero tasks):**
-
-```bash
+# All 9 libero tasks (batch)
 python scripts/advanced/collect_demo_multi_zhexi.py
 ```
 
@@ -63,7 +127,7 @@ python scripts/advanced/collect_demo_multi_zhexi.py
 
 ---
 
-## Step 2 — Convert to ZARR
+## Step 1 — Convert Demos to ZARR
 
 ```bash
 python roboverse_learn/il/data2zarr_dp.py \
@@ -74,13 +138,18 @@ python roboverse_learn/il/data2zarr_dp.py \
   --action_space joint_pos
 ```
 
-**Output**: `data_policy/{task}FrankaL0_obs:joint_pos_act:joint_pos_99.zarr`
+**Output**: `data_policy/{task}FrankaL0_obs:joint_pos_act:joint_pos_99.zarr` (~800MB each, **7.3GB total**)
 
 Or use the combined collect + convert script:
 
 ```bash
 bash roboverse_learn/il/collect_demo.sh   # edit task_name_set first
 ```
+
+> 💡 Alternatively, transfer zarr data directly via rsync (7.3GB total, skip this step):
+> ```bash
+> rsync -avz <old-server>:/path/to/RoboVerse/data_policy/ ./data_policy/
+> ```
 
 ---
 
@@ -237,6 +306,12 @@ LoRA fine-tune π₀/π₀.₅ on existing libero-10 demos (9-dim joint_pos), th
 > ⚠️ `pi0_libero` pre-trained checkpoint outputs 7-dim EEF delta — incompatible with `pi_eval.py` (expects 9-dim joint_pos).
 > Must LoRA fine-tune with RoboVerse data to get a compatible `pi0_roboverse_lora` / `pi05_roboverse_lora` checkpoint.
 
+### Large files to download (one-time)
+
+| File | Size | Download |
+|------|------|---------|
+| `pi05_base` checkpoint | **7.3GB** | Auto-downloaded by openpi training script to `~/.cache/openpi/openpi-assets/checkpoints/pi05_base/` |
+
 ### Step 1 — One-time setup
 
 ```bash
@@ -365,12 +440,17 @@ LoRA fine-tune `openvla-7b` on RoboVerse libero-10 demos, then evaluate.
 > ⚠️ Base `openvla-7b` outputs EEF delta actions normalized with `bridge_orig` stats (WidowX robot).
 > Direct zero-shot eval on Franka/LIBERO will produce wrong-scale actions — **must fine-tune** to get the correct `unnorm_key` and action distribution.
 
+### Large files to download (one-time)
+
+| File | Size | Download |
+|------|------|---------|
+| `openvla-7b` weights | **~15GB** | Auto-downloaded from HuggingFace to `~/.cache/huggingface/` on first run, or manually via Step 1 below |
+
 ### Env: `openvla` conda (Python 3.10)
 
 ```bash
-# conda env 'openvla': Python 3.10, transformers==4.40.1, flash-attn==2.5.5,
-# pyroki, metasim+mujoco — created by setup_env.sh
-bash roboverse_learn/vla/OpenVLA/setup_env.sh   # one-time
+# One-time setup
+bash roboverse_learn/vla/OpenVLA/setup_env.sh
 ```
 
 ### Step 1 — Save weights locally (one-time, ~15GB)
@@ -378,7 +458,6 @@ bash roboverse_learn/vla/OpenVLA/setup_env.sh   # one-time
 > Needed by `finetune.sh`; skipped if `third_party/openvla/openvla-7b/` already exists.
 
 ```bash
-# Runs in background, notifies when done
 tmux new-session -d -s openvla_download
 tmux send-keys -t openvla_download \
   'conda activate openvla && cd third_party/openvla && python3 -c "
@@ -393,15 +472,7 @@ print(\"✅ Done → third_party/openvla/openvla-7b/\")
 ### Step 2 — Convert demos to RLDS (tensorflow_datasets format)
 
 ```bash
-# Symlink demos, then build RLDS dataset via tfds
-cd roboverse_learn/vla/rlds_utils/roboverse
-ln -sf ../../../../roboverse_demo/demo_mujoco/libero.pick_butter demo/libero.pick_butter-
-conda run -n rlds_env tfds build --overwrite
-# Output: ~/tensorflow_datasets/bridge_orig/
-```
-
-To include all 9 libero-10 tasks, symlink each task dir before building:
-```bash
+# Symlink all 9 libero-10 task dirs, then build RLDS dataset
 for task in libero.pick_alphabet_soup libero.pick_bbq_sauce libero.pick_butter \
   libero.pick_chocolate_pudding libero.pick_cream_cheese libero.pick_milk \
   libero.orange_juice libero.pick_salad_dressing libero.pick_tomato_sauce; do
@@ -411,6 +482,7 @@ done
 cd roboverse_learn/vla/rlds_utils/roboverse
 conda run -n rlds_env tfds build --overwrite
 cd ../../../..
+# Output: ~/tensorflow_datasets/bridge_orig/
 ```
 
 ### Step 3 — LoRA fine-tune (one-click)
@@ -446,9 +518,7 @@ MUJOCO_GL=osmesa conda run -n openvla \
     --num_episodes 10 --max_steps 250 \
     --output_dir claude/out/openvla_eval/libero.pick_butter \
     2>&1 | tee claude/log/openvla_pick_butter.log
-```
 
-```bash
 # All 9 libero tasks
 for task in libero.pick_alphabet_soup libero.pick_bbq_sauce libero.pick_butter \
   libero.pick_chocolate_pudding libero.pick_cream_cheese libero.pick_milk \
@@ -470,6 +540,27 @@ done
 
 ---
 
+## Transfer Data to New Server
+
+```bash
+# Transfer all demo data (2.2GB)
+rsync -avz --progress \
+  <old-server>:/path/to/RoboVerse/roboverse_demo/ \
+  ./roboverse_demo/
+
+# Transfer zarr training data (7.3GB, optional — can regenerate from demos)
+rsync -avz --progress \
+  <old-server>:/path/to/RoboVerse/data_policy/ \
+  ./data_policy/
+
+# Transfer trained checkpoints (37GB, optional — can retrain)
+rsync -avz --progress \
+  <old-server>:/path/to/RoboVerse/info/outputs/ \
+  ./info/outputs/
+```
+
+---
+
 ## Output Directory Reference
 
 ```
@@ -480,12 +571,12 @@ claude/out/openvla_eval/{task}/         # OpenVLA eval videos + JSON reports
 ~/.cache/huggingface/lerobot/{repo_id}/ # LeRobot dataset (π₀ training data)
 third_party/openpi/checkpoints/         # π₀ trained checkpoints
 
-roboverse_demo/demo_mujoco/{task}/      # raw demo files
+roboverse_demo/demo_mujoco/{task}/      # raw demo files (2.2GB total)
   robot-franka/success/demo_XXXX/
     metadata.json                       # per-step joint states + actions
     rgb.mp4                             # head camera video
 
-data_policy/{task}FrankaL0_obs:joint_pos_act:joint_pos_99.zarr  # training data
+data_policy/{task}FrankaL0_obs:joint_pos_act:joint_pos_99.zarr  # training data (7.3GB total)
 
 info/outputs/DP/{task}/checkpoints/     # DP checkpoints (by epoch)
 info/outputs/ACT/{date}/{time}_{task}_*/
