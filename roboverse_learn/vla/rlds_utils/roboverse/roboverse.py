@@ -81,7 +81,7 @@ class BridgeOrig(tfds.core.GeneratorBasedBuilder):
         """Generator: find episodes and parse them."""
 
         def _get_episode_paths(root_path):
-            """Traverse task/robot/episode nested layout and collect episode dirs."""
+            """Traverse task/robot/success/episode nested layout and collect episode dirs."""
             roots = []
             if not os.path.exists(root_path):
                 return roots
@@ -93,10 +93,14 @@ class BridgeOrig(tfds.core.GeneratorBasedBuilder):
                     robot_path = os.path.join(task_path, robot)
                     if not os.path.isdir(robot_path):
                         continue
-                    for ep in sorted(os.listdir(robot_path)):
-                        ep_path = os.path.join(robot_path, ep)
-                        if os.path.isdir(ep_path):
-                            roots.append(ep_path)
+                    for status in sorted(os.listdir(robot_path)):
+                        status_path = os.path.join(robot_path, status)
+                        if not os.path.isdir(status_path):
+                            continue
+                        for ep in sorted(os.listdir(status_path)):
+                            ep_path = os.path.join(status_path, ep)
+                            if os.path.isdir(ep_path):
+                                roots.append(ep_path)
             return roots
 
         def _count_frames(reader):

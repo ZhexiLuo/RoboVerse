@@ -128,3 +128,6 @@ roboverse_learn/vla/rlds_utils/roboverse/demo/
 metasim/cfg/tasks/rescale/
 roboverse_pack/tasks/rescale/
 roboverse_pack/tasks/gpt/
+
+# Python venv
+.venv311/

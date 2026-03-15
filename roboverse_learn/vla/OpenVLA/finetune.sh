@@ -21,9 +21,9 @@ IMAGE_AUG="False"
 # WandB Configuration
 # Set USE_WANDB=false to skip WandB logging (no login required)
 # Set USE_WANDB=true and login with: wandb login (or set WANDB_API_KEY env var)
-USE_WANDB=false
+USE_WANDB=true
 WANDB_PROJECT="openvla_roboverse"
-WANDB_ENTITY=""
+WANDB_ENTITY="zhexiluo45-roboscience"
 SAVE_STEPS=500
 MAX_STEPS=5000
 
@@ -54,7 +54,7 @@ else
   echo "✓ Found weights at $VLA_PATH"
 fi
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 export PYTHONPATH=$PYTHONPATH:$PROJECT_ROOT/roboverse_learn/vla/rlds_utils
 
 # Disable WandB if requested
@@ -68,7 +68,7 @@ fi
 
 cd "$PROJECT_ROOT/third_party/openvla"
 
-python -m torch.distributed.run --standalone --nnodes 1 --nproc-per-node 1 vla-scripts/finetune.py \
+python -m torch.distributed.run --standalone --nnodes 1 --nproc-per-node ${NPROC_PER_NODE:-1} vla-scripts/finetune.py \
   --max_steps "$MAX_STEPS" \
   --vla_path "$VLA_PATH" \
   --data_root_dir "$DATA_ROOT_DIR" \
