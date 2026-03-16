@@ -78,7 +78,7 @@ class OpenVLARunner:
             torch_dtype=torch.bfloat16,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
-            attn_implementation="flash_attention_2",
+            # attn_implementation="flash_attention_2",  # 🍃 disabled: not needed for eval, avoids flash-attn install
         ).to(self.device).eval()
 
         # 🍃 norm_stats loaded automatically from config.json by from_pretrained()
@@ -114,8 +114,7 @@ class OpenVLARunner:
         first_cam = next(iter(latest_obs.cameras.values()))
         rgb_data = first_cam.rgb
         x = rgb_data[0].detach().cpu() if rgb_data.dim() == 4 else rgb_data.detach().cpu()
-        image = x.numpy()
-        image = Image.fromarray(image)
+        image = Image.fromarray(x.numpy())
 
         # instruction = self.env.task_env.task_desc
         if hasattr(self.env.task_env, "task_desc"):
@@ -142,7 +141,6 @@ class OpenVLARunner:
                 do_sample=False
             )
 
-        print(f"VLA model output (denormalized): pos={action[:3]}, rot={action[3:6]}, gripper={action[6]}")
         action = torch.tensor(action, dtype=torch.float32, device=self.device)
         return action.unsqueeze(0) if (self.num_envs == 1 and action.dim() == 1) else action
 
@@ -190,7 +188,6 @@ class OpenVLARunner:
 
         # Base pose
         robot_pos, robot_quat = robot_root_state[:, 0:3], robot_root_state[:, 3:7]
-        # print(f"Robot position in world: {robot_pos}")
 
         # Local frame transform using scipy
         # Convert to scipy format and use Rotation for quaternion operations
@@ -325,7 +322,7 @@ def main():
             data_types=["rgb"],
             width=256,
             height=256,
-            pos=(1.5, 0.0, 1.5),
+            pos=(1.0, 0.0, 0.75),  # 🔧 Match training data camera position
             look_at=(0.0, 0.0, 0.0),
         )],
         device=args.device,

@@ -274,7 +274,7 @@ def main() -> bool:
             data_types=["rgb"],
             width=256,
             height=256,
-            pos=(1.5, 0.0, 1.5),
+            pos=(1.0, 0.0, 0.75),  # 🔧 Match training data camera position
             look_at=(0.0, 0.0, 0.0),
         )],
         device=args.device,
