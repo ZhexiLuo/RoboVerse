@@ -177,6 +177,21 @@ Raw Trajectories → Standardized Format → Trained Model → Performance Metri
 - Adjust simulation parameters in `collect_demo.py` based on your specific tasks
 - Modify dataset paths in `finetune_roboverse.sh` to match your environment
 
+## Headless Server Setup (EGL Rendering)
+
+Evaluation requires MuJoCo rendering. On headless servers (no display), install EGL:
+
+```bash
+# System dependency (one-time)
+sudo apt-get install -y libegl1-mesa-dev
+
+# Environment variables (add to .bashrc or set before eval)
+export MUJOCO_GL=egl
+export PYOPENGL_PLATFORM=egl
+```
+
+See model-specific READMEs for eval details.
+
 ## Quick Start for Different Models
 
 ### OpenVLA (this workflow)

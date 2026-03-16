@@ -46,6 +46,9 @@ cd openvla && pip install -e .
 pip install packaging ninja
 pip install "flash-attn==2.5.5" --no-build-isolation
 
+# Eval dependencies (gymnasium, imageio, timm for RoboVerse metasim + OpenVLA)
+pip install gymnasium imageio imageio-ffmpeg timm
+
 echo ""
 echo "✓ Setup Complete!"
 echo "  - rlds_env: Data conversion"

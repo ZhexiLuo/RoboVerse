@@ -24,8 +24,8 @@ IMAGE_AUG="False"
 USE_WANDB=true
 WANDB_PROJECT="openvla_roboverse"
 WANDB_ENTITY="zhexiluo45-roboscience"
-SAVE_STEPS=500
 MAX_STEPS=5000
+SAVE_STEPS=$MAX_STEPS  # 🍃 only save at the end to avoid IO bottleneck
 
 mkdir -p "$RUN_ROOT_DIR" "$ADAPTER_TMP_DIR"
 

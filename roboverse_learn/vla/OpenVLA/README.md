@@ -72,6 +72,38 @@ MAX_STEPS=5000
 - Set `HF_TOKEN` if downloading OpenVLA weights: `export HF_TOKEN=your_token`
 - Change GPU in `finetune.sh`: `CUDA_VISIBLE_DEVICES=0`
 - Dataset path: Modify `DATA_ROOT_DIR` if needed
-- **WandB**: To enable logging, login with `wandb login` (or set `WANDB_API_KEY` env var). 
+- **WandB**: To enable logging, login with `wandb login` (or set `WANDB_API_KEY` env var).
   To skip WandB logging, set `USE_WANDB=false` in `finetune.sh`
+
+## Headless Evaluation (Server without Display)
+
+Evaluation requires MuJoCo EGL rendering. On headless servers:
+
+```bash
+# 1. Install EGL system library (one-time, requires sudo)
+sudo apt-get install -y libegl1-mesa-dev
+
+# 2. Set environment variables before running eval
+export MUJOCO_GL=egl
+export PYOPENGL_PLATFORM=egl
+
+# 3. Eval also needs metasim on PYTHONPATH (if not pip install -e)
+export PYTHONPATH=/path/to/RoboVerse:$PYTHONPATH
+
+# 4. Run evaluation
+python vla_eval.py --model_path runs/<checkpoint> --task pick_butter
+```
+
+The `openvla` conda env needs these extra packages for eval:
+```bash
+conda activate openvla
+pip install gymnasium imageio imageio-ffmpeg
+```
+
+If running eval from a separate Python environment (e.g., `.venv311`), also install:
+```bash
+pip install 'transformers==4.40.1' peft accelerate timm
+pip install packaging ninja
+pip install 'flash-attn==2.5.5' --no-build-isolation
+```
 

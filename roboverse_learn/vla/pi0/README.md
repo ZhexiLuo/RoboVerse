@@ -305,3 +305,22 @@ If you encounter errors or version incompatibilities with the `uv` environment, 
 1. Install `openpi_client` in your RoboVerse environment: `pip install openpi_client`
 2. Use the π environment to serve the policy and generate action chunks
 3. Use the RoboVerse environment to execute actions and evaluate performance
+
+### Headless EGL Rendering (Server without Display)
+
+Evaluation with MuJoCo requires EGL on headless servers. If you see:
+```
+ImportError: Cannot initialize a headless EGL display.
+```
+
+**Fix:**
+```bash
+# 1. Install EGL system library (one-time, requires sudo)
+sudo apt-get install -y libegl1-mesa-dev
+
+# 2. Set environment variables before running eval
+export MUJOCO_GL=egl
+export PYOPENGL_PLATFORM=egl
+```
+
+The `libEGL warning: egl: failed to create dri2 screen` warnings can be safely ignored — rendering still works via the NVIDIA EGL backend.
