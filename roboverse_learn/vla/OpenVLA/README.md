@@ -1,109 +1,30 @@
 # OpenVLA Fine-tuning for RoboVerse
 
-Automated scripts for fine-tuning OpenVLA models on RoboVerse demonstration data.
+See the unified pipeline doc: [`../../README.md`](../../README.md) (§ OpenVLA section)
 
-## Quick Start
-
-### 1. Setup (one-time)
-```bash
-bash setup_env.sh
-```
-
-### 2. Collect Demos
-```bash
-cd ../../../../  # Go to RoboVerse root
-python scripts/advanced/collect_demo.py --sim=mujoco --task=pick_butter --headless --run_all
-```
-
-### 3. Train
-```bash
-cd roboverse_learn/vla/OpenVLA
-
-# Convert to RLDS + fine-tune
-bash run_pipeline.sh
-
-# Skip conversion if dataset already exists
-bash run_pipeline.sh --skip-convert
-```
-
-### 4. Evaluate
-```bash
-conda activate openvla
-python eval.py --model_path runs/<checkpoint> --task pick_butter
-```
-
-## Scripts
-
-**setup_env.sh** - Sets up `rlds_env` and `openvla` conda environments
-
-**run_pipeline.sh** - RLDS conversion + fine-tuning for `pick_butter` task (edit TASK_NAME to change)
-
-**finetune.sh** - OpenVLA LoRA fine-tuning (rank=32, bs=8, lr=5e-4, steps=5000)
-
-**eval.py** - Model evaluation script
-
-## Demo Collection
-
-Collect demos separately before running the pipeline:
-```bash
-cd RoboVerse/
-python scripts/advanced/collect_demo.py --sim=mujoco --task=pick_butter --headless --run_all
-```
-
-Output: `roboverse_demo/demo_mujoco/pick_butter-/`
-
-## Outputs
-
-- `runs/` - Model checkpoints
-- `adapters/` - LoRA adapter weights
-
-## Configuration
-
-Edit `finetune.sh` to customize:
-```bash
-LORA_RANK=32
-BATCH_SIZE=8
-LEARNING_RATE=5e-4
-MAX_STEPS=5000
-```
-
-## Notes
-
-- Set `HF_TOKEN` if downloading OpenVLA weights: `export HF_TOKEN=your_token`
-- Change GPU in `finetune.sh`: `CUDA_VISIBLE_DEVICES=0`
-- Dataset path: Modify `DATA_ROOT_DIR` if needed
-- **WandB**: To enable logging, login with `wandb login` (or set `WANDB_API_KEY` env var).
-  To skip WandB logging, set `USE_WANDB=false` in `finetune.sh`
-
-## Headless Evaluation (Server without Display)
-
-Evaluation requires MuJoCo EGL rendering. On headless servers:
+## Quick Reference
 
 ```bash
-# 1. Install EGL system library (one-time, requires sudo)
-sudo apt-get install -y libegl1-mesa-dev
+# 1. Setup (one-time)
+bash roboverse_learn/vla/OpenVLA/setup_env.sh
 
-# 2. Set environment variables before running eval
-export MUJOCO_GL=egl
-export PYOPENGL_PLATFORM=egl
+# 2. Convert demos to RLDS
+cd roboverse_learn/vla/rlds_utils/roboverse && conda run -n rlds_env tfds build --overwrite
 
-# 3. Eval also needs metasim on PYTHONPATH (if not pip install -e)
-export PYTHONPATH=/path/to/RoboVerse:$PYTHONPATH
+# 3. Fine-tune
+conda activate openvla && bash roboverse_learn/vla/OpenVLA/finetune.sh
 
-# 4. Run evaluation
-python vla_eval.py --model_path runs/<checkpoint> --task pick_butter
+# 4. Eval
+MUJOCO_GL=osmesa conda run -n openvla python roboverse_learn/vla/OpenVLA/vla_eval.py \
+  --model_path runs/<checkpoint> --task libero.pick_butter --robot franka --sim mujoco
 ```
 
-The `openvla` conda env needs these extra packages for eval:
-```bash
-conda activate openvla
-pip install gymnasium imageio imageio-ffmpeg
-```
+## Key Hyperparams (finetune.sh)
 
-If running eval from a separate Python environment (e.g., `.venv311`), also install:
-```bash
-pip install 'transformers==4.40.1' peft accelerate timm
-pip install packaging ninja
-pip install 'flash-attn==2.5.5' --no-build-isolation
-```
-
+| Param | Default |
+|-------|---------|
+| `LORA_RANK` | 32 |
+| `BATCH_SIZE` | 8 |
+| `LEARNING_RATE` | 5e-4 |
+| `MAX_STEPS` | 5000 |
+| `NPROC_PER_NODE` | 1 (multi-GPU via env var) |

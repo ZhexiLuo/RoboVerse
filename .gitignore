@@ -113,13 +113,10 @@ id_rsa*
 
 # Claude Code
 .claude/
+**/CLAUDE.md
 
 # ACT temporary files
 roboverse_learn/il/act/ckpt_dir_path.txt
-roboverse_learn/il/act/eval_all_300ep.sh
-roboverse_learn/il/act/eval_batch2.sh
-roboverse_learn/il/act/eval_single.sh
-roboverse_learn/il/dp/CLAUDE.md
 
 # RLDS demo symlinks (local data, not tracked)
 roboverse_learn/vla/rlds_utils/roboverse/demo/

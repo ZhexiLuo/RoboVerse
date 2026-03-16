@@ -215,6 +215,33 @@ MUJOCO_GL=egl python roboverse_learn/il/dp/main.py \
 | `ddim_unet_model` | UNet | Fast inference |
 | `vita_model` | MLP | Lightest |
 
+### DP Configuration Reference
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `num_epochs` | Training epochs | `1000` |
+| `batch_size` | Dataloader batch size | `32` |
+| `lr` | Learning rate | `1e-4` |
+| `rollout_every` | Eval frequency (epochs) | `50` |
+| `checkpoint_every` | Save frequency (epochs) | `50` |
+| `eval_max_step` | Max steps per eval episode | `350` |
+
+### DP Pitfalls
+
+- `algo_model` must be set as **env var** (`export algo_model=...`), not Hydra CLI arg
+- Must specify `eval_config.policy_runner` params at training time — they get saved into checkpoint config
+- Default fallback `ddpm_model` does not exist — always set `algo_model` explicitly
+- Use `MUJOCO_GL=egl` for headless rendering; `max_step=350` recommended (250 causes heavy timeouts)
+
+### DP Results (ddpm_dit_model, 100 epochs)
+
+| Task | Success Rate |
+|------|-------------|
+| libero.orange_juice | **93.94%** ✅ |
+| libero.pick_milk | **86.87%** ✅ |
+| libero.pick_chocolate_pudding | **79.80%** ✅ |
+| libero.pick_cream_cheese | **73.74%** ✅ |
+
 ---
 
 ## ACT (Action Chunking Transformer) ✅
@@ -254,14 +281,6 @@ MUJOCO_GL=egl CUDA_VISIBLE_DEVICES=0 \
 **Checkpoint**: `info/outputs/ACT/{date}/{time}_{task}_obs:joint_pos_act:joint_pos_chunk20_99/policy_best.ckpt`
 
 > `--ckpt_path` takes the **directory** — `policy_best.ckpt` is appended internally.
-
-### Eval (batch, all 9 tasks, uses fixed 300ep checkpoints)
-
-```bash
-CUDA_VISIBLE_DEVICES=0 bash roboverse_learn/il/act/eval_all_fixed.sh \
-  2>&1 | tee claude/log/act_eval_fixed.log
-# Log per task: claude/log/act_eval_fixed_{task}.log
-```
 
 ### Eval (single task)
 
@@ -599,7 +618,6 @@ tmp/act/{task}/{ckpt}/success_rate.txt                     # ACT eval results
 | `roboverse_learn/il/dp/main.py` | DP train/eval entry (Hydra) |
 | `roboverse_learn/il/dp/dp_run.sh` | DP batch train+eval script |
 | `roboverse_learn/il/act/act_run_libero.sh` | ACT batch train+eval (9 tasks) |
-| `roboverse_learn/il/act/eval_all_fixed.sh` | ACT batch eval with saved checkpoints |
 | `roboverse_learn/vla/pi0/pi_eval.py` | π₀ eval client (WebSocket → action decode) |
 | `roboverse_learn/vla/pi0/train_pi0.sh` | π₀ one-click LoRA training script |
 | `roboverse_learn/vla/pi0/convert_roboverse_to_lerobot.py` | Convert RoboVerse demos → LeRobot format |
@@ -611,16 +629,81 @@ tmp/act/{task}/{ckpt}/success_rate.txt                     # ACT eval results
 
 ---
 
-## Current Status
+## Benchmark Results (Libero-10, 2026-03)
 
-| Algorithm | Train | Eval | Best SR | Date |
-|-----------|-------|------|---------|------|
-| **Diffusion Policy** | ✅ | ✅ | TBD | 2026-03 |
-| **ACT** | ✅ | ✅ | 4/9 tasks 100% (300ep) | 2026-03-09 |
-| **π₀ (LoRA fine-tune)** | ⏳ pending | ⏳ pending | — | — |
-| **OpenVLA (LoRA fine-tune)** | ⏳ pending | ⏳ pending | — | — |
+| Algorithm | Train | Eval | Best SR | Notes |
+|-----------|-------|------|---------|-------|
+| **Diffusion Policy** | ✅ | ✅ | 4/9 tasks >70% (100ep) | ddpm_dit_model |
+| **ACT** | ✅ | ✅ | 4/9 tasks 100% (300ep) | wandb: RoboVerse_ACT |
+| **π₀ (zero-shot)** | — | ✅ | 0% (all tasks) | scene domain gap |
+| **OpenVLA (zero-shot)** | — | ✅ | 0% (all tasks) | scene domain gap |
+| **π₀ (LoRA fine-tune)** | ⏳ | ⏳ | — | pending |
+| **OpenVLA (LoRA fine-tune)** | ⏳ | ⏳ | — | pending |
 
-> Previous π₀/OpenVLA eval results were obtained with buggy code (reverted in commit 81097c88).
-> Re-evaluation needed with upstream-aligned code.
+---
 
-For detailed results and timeline: see `roboverse_learn/libero_act_pi0_openvla.md`
+## Troubleshooting
+
+### EGL / Headless Rendering
+
+```bash
+# Install EGL system library (one-time, requires sudo)
+sudo apt-get install -y libegl1-mesa-dev
+
+# Set environment variables before running eval
+export MUJOCO_GL=egl
+export PYOPENGL_PLATFORM=egl
+```
+
+The `libEGL warning: egl: failed to create dri2 screen` warnings can be safely ignored — rendering still works via the NVIDIA EGL backend.
+
+### OpenVLA EGL Segfault
+
+OpenVLA eval must use the `openvla` conda env (torch 2.2.0+cu121). Using `.venv311` (torch 2.10+cu128) causes EGL segfault when combined with transformers.
+
+### π₀ Feature Type 'List' Not Found
+
+Add this monkey-patch to `openpi/training/dataloader.py`:
+
+```python
+try:
+    import datasets.features.features as features
+    _OLD = features.generate_from_dict
+    def _new(obj):
+        if isinstance(obj, dict) and obj.get("_type") == "List":
+            obj["_type"] = "Sequence"
+        return _OLD(obj)
+    features.generate_from_dict = _new
+except (ImportError, AttributeError):
+    pass
+```
+
+See: https://github.com/Physical-Intelligence/openpi/issues/561
+
+### conda activate Fails in tmux
+
+Use `conda run -n <env>` instead of `conda activate` in non-login shells (tmux default).
+
+### zarr v3 API Changes
+
+If you see `AttributeError: 'Group' object has no attribute 'items'`, the zarr v3 compat patches have already been applied in `replay_buffer.py`. Ensure `zarr>=3.0` is installed.
+
+---
+
+## RLDS Builder (OpenVLA Data Format)
+
+The RLDS builder at `roboverse_learn/vla/rlds_utils/roboverse/roboverse.py` traverses a 4-level directory structure:
+
+```
+demo/{task}-/
+  {robot}/           # e.g., robot-franka
+    {status}/        # success / failed
+      demo_XXXX/     # episode dir
+        metadata.json
+        rgb.mp4
+```
+
+Key implementation notes:
+- TF Hub sentence encoder removed — OpenVLA uses `language_instruction` text directly
+- `lang_emb` is a zero vector (512-dim placeholder)
+- Build with: `conda run -n rlds_env tfds build --overwrite`
